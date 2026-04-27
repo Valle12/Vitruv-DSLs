@@ -25,5 +25,6 @@
     <module>ide</module>
     <module>language</module>
     <module>runtime</module>
+    <module>preprocessor</module>
   </modules>
 </project>

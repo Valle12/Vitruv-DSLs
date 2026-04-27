@@ -73,6 +73,8 @@ class ReactionLanguageFormatterTest {
 		execute actions in minimal
 		
 		// A test reaction
+		@feature(type="basic")
+
 		reaction InsertedNonRoot {
 			after element minimal::NonRoot inserted in minimal::NonRootObjectContainerHelper[nonRootObjectsContainment]
 			call insertNonRoot(newValue)

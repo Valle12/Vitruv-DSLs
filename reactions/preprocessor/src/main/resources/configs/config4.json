@@ -1,0 +1,6 @@
+[
+  "umlClassInsertedToAbstractClass.reactions",
+  "umlSuperClassAdded.reactions",
+  "umlPackageInserted.reactions",
+  "umlOperationMadeStaticUseStaticCall.reactions"
+]

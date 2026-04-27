@@ -32,6 +32,7 @@ ReactionsImport returns toplevelelements::ReactionsImport:
 // *********************************
 Reaction returns toplevelelements::Reaction:
 	(documentation=ML_COMMENT)?
+	Annotation?
 	'reaction' (overriddenReactionsSegment=[toplevelelements::ReactionsSegment] '::')? name=ValidID '{'
 	trigger=Trigger
 	callRoutine=RoutineCall
@@ -175,6 +176,10 @@ CreateStatement returns common::NamedMetaclassReference:
 // *********** UPDATE ***********
 UpdateBlock returns toplevelelements::UpdateBlock:
 	'update' code=XExpression;
+
+// *********** ANNOTATION ***********
+Annotation:
+	'@' 'feature' '(' 'type' '=' STRING ')';
 
 // ****** CODE BLOCKS ******
 fragment MetaclassReference returns common::MetaclassReference:
