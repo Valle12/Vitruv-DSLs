@@ -18,8 +18,15 @@ public class ConfigReader {
 
   public List<String> readConfig() {
     Optional<String> optionalContent = TextReader.readTextFile(config);
-    if (optionalContent.isEmpty()) return List.of();
+    if (optionalContent.isEmpty()) {
+      return List.of();
+    }
+
     String content = optionalContent.get();
+    if (content.isEmpty()) {
+      return List.of();
+    }
+
     return jsonMapper.fromJsonToList(content, new TypeReference<>() {});
   }
 }

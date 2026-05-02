@@ -1,0 +1,37 @@
+import static extension tools.vitruv.applications.util.temporary.java.JavaContainerAndClassifierUtil.*
+import static extension tools.vitruv.applications.util.temporary.java.JavaModifierUtil.*
+import static java.util.List.copyOf
+import java.util.ArrayList
+
+import "http://www.eclipse.org/uml2/5.0.0/UML" as uml
+import "http://www.emftext.org/java" as java
+
+reactions: umlToJavaClassifier
+in reaction to changes in uml
+execute actions in java
+
+//===========================================
+//=========================================== Class
+//===========================================
+routine createOrFindJavaClass(uml::Classifier umlClassifier) {
+	match {
+		require absence of java::Class corresponding to umlClassifier
+		val javaPackage = retrieve optional java::Package corresponding to umlClassifier.eContainer
+	}
+	update {
+		if (javaPackage.isPresent) {
+			createOrFindJavaClassInPackage(umlClassifier, javaPackage.get)
+		} else {
+			createJavaClass(umlClassifier)
+		}
+	}
+}
+
+@feature(type = umlClassToJavaClass)
+reaction UmlClassInserted {
+	after element uml::Class inserted in uml::Package[packagedElement]
+	call {
+		createOrFindJavaClass(newValue)
+		insertJavaClassifier(newValue, affectedEObject)
+	}
+}

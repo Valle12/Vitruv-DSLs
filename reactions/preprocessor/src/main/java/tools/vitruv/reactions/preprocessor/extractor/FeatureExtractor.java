@@ -38,6 +38,7 @@ public class FeatureExtractor {
       Files.createDirectory(outputDir);
     } catch (IOException e) {
       log.error("Error creating output directory");
+      return;
     }
 
     ConfigReader configReader = new ConfigReader(jsonMapper, configFile);

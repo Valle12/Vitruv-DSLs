@@ -12,6 +12,10 @@ public class Main {
   private static final String REACTIONS_SHORT = "-r";
 
   public static void main(String[] args) {
+    run(args);
+  }
+
+  public static int run(String[] args) {
     if (args.length == 1 && HELP.equals(args[0])) {
       log.info(
           "\nUsage: preprocessor [options]\n{}/{}\tConfig file\n{}/{}\tReactions directory",
@@ -19,10 +23,10 @@ public class Main {
           CONFIG_SHORT,
           REACTIONS,
           REACTIONS_SHORT);
-      System.exit(0);
+      return 0;
     } else if (args.length != 4) {
       log.error("Expected exactly four arguments, but got {}", args.length);
-      System.exit(1);
+      return 1;
     }
 
     boolean configFirst;
@@ -32,5 +36,6 @@ public class Main {
 
     FeatureExtractor featureExtractor = new FeatureExtractor(configFile, reactionsDir);
     featureExtractor.extractFeatures();
+    return 0;
   }
 }
