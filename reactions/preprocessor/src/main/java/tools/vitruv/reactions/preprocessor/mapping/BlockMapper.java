@@ -1,6 +1,8 @@
 package tools.vitruv.reactions.preprocessor.mapping;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,7 +14,7 @@ public class BlockMapper {
   private static final char OPEN_CURLY = '{';
   private static final char CLOSE_CURLY = '}';
   private static final Pattern REACTION_PATTERN =
-      Pattern.compile("@feature[^\\n]*type\\s*=\\s*(\\w+)[^\\n]*\\s*(reaction)\\s*\\w+\\s*\\{");
+      Pattern.compile("@feature[^\\n]*type\\s*=\\s*\"(\\w+)\"[^\\n]*\\s*(reaction)\\s*\\w+\\s*\\{");
   private static final Pattern ROUTINE_PATTERN =
       Pattern.compile("(routine)\\s+(\\w+)\\s*\\([^)]*\\)\\s*\\{");
 
@@ -25,7 +27,7 @@ public class BlockMapper {
   private String extractHeader(String content) {
     int contentBegin = Integer.MAX_VALUE;
 
-    Pattern feature = Pattern.compile("@feature\\(type\\s*=\\s*\\w*\\)");
+    Pattern feature = Pattern.compile("@feature\\(type\\s*=\\s*\"\\w+\"\\)");
     Matcher featureMatcher = feature.matcher(content);
     if (featureMatcher.find()) {
       contentBegin = featureMatcher.start();
@@ -54,7 +56,7 @@ public class BlockMapper {
     Matcher reactionMatcher = REACTION_PATTERN.matcher(content);
     Matcher routineMatcher = ROUTINE_PATTERN.matcher(content);
 
-    Map<String, String> reactions = new HashMap<>();
+    Map<String, List<String>> reactions = new HashMap<>();
     Map<String, String> routines = new HashMap<>();
 
     boolean hasReaction = reactionMatcher.find();
@@ -69,7 +71,9 @@ public class BlockMapper {
       int end = blockIndex.end();
 
       if (reactionFound) {
-        reactions.put(matcher.group(1), content.substring(start, end));
+        reactions
+            .computeIfAbsent(matcher.group(1), k -> new ArrayList<>())
+            .add(content.substring(start, end));
         hasReaction = reactionMatcher.find();
       } else {
         routines.put(matcher.group(2), content.substring(start, end));

@@ -83,18 +83,24 @@ public class FeatureExtractor {
       }
 
       StringBuilder sb = new StringBuilder();
+      if (reactionsFile.header().contains("@feature")) {
+        System.out.println("TODO");
+      }
+
       sb.append(reactionsFile.header());
       CodeBlocks codeBlocks = reactionsFile.codeBlocks();
       Set<String> includedRoutines = new HashSet<>();
 
-      for (Map.Entry<String, String> reaction : codeBlocks.reactions().entrySet()) {
-        if (!features.contains(reaction.getKey())) {
+      for (Map.Entry<String, List<String>> featureMapping : codeBlocks.reactions().entrySet()) {
+        if (!features.contains(featureMapping.getKey())) {
           continue;
         }
 
-        sb.append(reaction.getValue());
-        sb.append("\n\n");
-        appendRoutines(reaction.getValue(), codeBlocks, includedRoutines, sb);
+        for (String reaction : featureMapping.getValue()) {
+          sb.append(reaction);
+          sb.append("\n\n");
+          appendRoutines(reaction, codeBlocks, includedRoutines, sb);
+        }
       }
 
       try {
