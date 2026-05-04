@@ -24,7 +24,7 @@ public class FeatureExtractor {
   private final String reactionsDir;
   private static final String OUTPUT_DIR_SUFFIX = "-reactions";
   private static final String JSON_EXTENSION = ".json";
-  private static final Pattern WORD_PATTERN = Pattern.compile("\\w+");
+  private static final Pattern WORD_PATTERN = Pattern.compile("(\\w\\.)*(\\w+)");
 
   public void extractFeatures() {
     JsonMapper jsonMapper = new JsonMapper();
@@ -72,6 +72,10 @@ public class FeatureExtractor {
     BlockMapper blockMapper = new BlockMapper();
 
     for (Map.Entry<String, String> entry : reactions.entrySet()) {
+      // TODO it always only checks for routines in the current file
+      // when i call propagate.propagate, it should see the dot, and append something in the propagate reaction, which can be found in the header, so this might also have to be saved in the process
+      // and then we can probably have a map of stringbuilders, where all read files can write something.
+      // In the end we should write out all files, hopefully ensuring correctness over file borders
       ReactionsFile reactionsFile = blockMapper.extractBlocks(entry.getValue());
       Path outputFile = outputDir.resolve(entry.getKey());
 
@@ -83,10 +87,6 @@ public class FeatureExtractor {
       }
 
       StringBuilder sb = new StringBuilder();
-      if (reactionsFile.header().contains("@feature")) {
-        System.out.println("TODO");
-      }
-
       sb.append(reactionsFile.header());
       CodeBlocks codeBlocks = reactionsFile.codeBlocks();
       Set<String> includedRoutines = new HashSet<>();
@@ -116,7 +116,7 @@ public class FeatureExtractor {
     Matcher matcher = WORD_PATTERN.matcher(content);
 
     while (matcher.find()) {
-      String routineKey = matcher.group();
+      String routineKey = matcher.group(2);
       if (!codeBlocks.routines().containsKey(routineKey) || includedRoutines.contains(routineKey)) {
         continue;
       }
