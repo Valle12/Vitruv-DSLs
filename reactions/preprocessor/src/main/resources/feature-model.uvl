@@ -50,5 +50,5 @@ features
 			ParameterConstraints
 
 constraints
-	ClassCreation.Class => ConstructorCreation
+	ConstructorCreation => ClassCreation.Class
 	DataTypeCreation.Class => ClassCreation.Class
