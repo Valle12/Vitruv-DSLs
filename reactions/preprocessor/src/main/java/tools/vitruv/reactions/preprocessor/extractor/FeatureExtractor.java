@@ -14,6 +14,7 @@ import tools.vitruv.reactions.preprocessor.mapping.BlockMapper;
 import tools.vitruv.reactions.preprocessor.mapping.JsonMapper;
 import tools.vitruv.reactions.preprocessor.model.CodeBlocks;
 import tools.vitruv.reactions.preprocessor.model.ReactionsFile;
+import tools.vitruv.reactions.preprocessor.model.ReactionsUtils;
 import tools.vitruv.reactions.preprocessor.reader.ConfigReader;
 import tools.vitruv.reactions.preprocessor.reader.ReactionsReader;
 
@@ -24,7 +25,8 @@ public class FeatureExtractor {
   private final String reactionsDir;
   private static final String OUTPUT_DIR_SUFFIX = "-reactions";
   private static final String JSON_EXTENSION = ".json";
-  private static final Pattern WORD_PATTERN = Pattern.compile("(\\w\\.)*(\\w+)");
+  private static final Pattern WORD_PATTERN = Pattern.compile("(\\w+\\.)?(\\w+)");
+  private final Map<String, ReactionsUtils> reactionsUtils = new HashMap<>();
 
   public void extractFeatures() {
     JsonMapper jsonMapper = new JsonMapper();
@@ -72,10 +74,6 @@ public class FeatureExtractor {
     BlockMapper blockMapper = new BlockMapper();
 
     for (Map.Entry<String, String> entry : reactions.entrySet()) {
-      // TODO it always only checks for routines in the current file
-      // when i call propagate.propagate, it should see the dot, and append something in the propagate reaction, which can be found in the header, so this might also have to be saved in the process
-      // and then we can probably have a map of stringbuilders, where all read files can write something.
-      // In the end we should write out all files, hopefully ensuring correctness over file borders
       ReactionsFile reactionsFile = blockMapper.extractBlocks(entry.getValue());
       Path outputFile = outputDir.resolve(entry.getKey());
 
@@ -86,10 +84,18 @@ public class FeatureExtractor {
         log.error("Error creating output file {}", outputFile);
       }
 
-      StringBuilder sb = new StringBuilder();
-      sb.append(reactionsFile.header());
-      CodeBlocks codeBlocks = reactionsFile.codeBlocks();
       Set<String> includedRoutines = new HashSet<>();
+      StringBuilder sb = new StringBuilder();
+      sb.append(reactionsFile.header().header());
+      reactionsUtils.put(
+          reactionsFile.header().reactionsName(),
+          new ReactionsUtils(reactionsFile, outputFile, sb, includedRoutines));
+    }
+
+    for (Map.Entry<String, ReactionsUtils> entry : reactionsUtils.entrySet()) {
+      CodeBlocks codeBlocks = entry.getValue().reactionsFile().codeBlocks();
+      StringBuilder sb = entry.getValue().sb();
+      Set<String> includedRoutines = entry.getValue().includedRoutines();
 
       for (Map.Entry<String, List<String>> featureMapping : codeBlocks.reactions().entrySet()) {
         if (!features.contains(featureMapping.getKey())) {
@@ -102,6 +108,11 @@ public class FeatureExtractor {
           appendRoutines(reaction, codeBlocks, includedRoutines, sb);
         }
       }
+    }
+
+    for (Map.Entry<String, ReactionsUtils> entry : reactionsUtils.entrySet()) {
+      Path outputFile = entry.getValue().outputFile();
+      StringBuilder sb = entry.getValue().sb();
 
       try {
         Files.writeString(outputFile, sb.toString(), StandardCharsets.UTF_8);
@@ -117,6 +128,20 @@ public class FeatureExtractor {
 
     while (matcher.find()) {
       String routineKey = matcher.group(2);
+
+      String linkedReaction = matcher.group(1);
+      if (linkedReaction != null) {
+        linkedReaction = linkedReaction.substring(0, linkedReaction.length() - 1);
+        ReactionsUtils linkedReactionsUtils = reactionsUtils.get(linkedReaction);
+        if (linkedReactionsUtils != null) {
+          CodeBlocks linkedCodeBlocks = linkedReactionsUtils.reactionsFile().codeBlocks();
+          Set<String> linkedIncludedRoutines = linkedReactionsUtils.includedRoutines();
+          String linkedRoutine = linkedCodeBlocks.routines().get(matcher.group(2));
+          StringBuilder linkedSb = linkedReactionsUtils.sb();
+          appendRoutines(linkedRoutine, linkedCodeBlocks, linkedIncludedRoutines, linkedSb);
+        }
+      }
+
       if (!codeBlocks.routines().containsKey(routineKey) || includedRoutines.contains(routineKey)) {
         continue;
       }

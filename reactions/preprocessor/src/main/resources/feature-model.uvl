@@ -1,0 +1,54 @@
+features
+	UmlJava
+		mandatory
+			ModelMapping
+			PackageMapping
+			Naming
+			PrimitiveTypeMapping
+			Visibility
+			Multiplicity
+			InterfaceCreation
+				optional
+					InterfacePrefix
+			EnumCreation
+			ClassDeletion
+			AttributeCreation
+				optional
+					AccessorGeneration
+			AttributeDeletion
+			AttributeType
+			MethodCreation
+			MethodDeletion
+			ReturnType
+			ParameterMapping
+			ParameterDirection
+			ClassModifiers
+			AttributeModifiers
+				optional
+					AttributeStaticCall
+			MethodModifiers
+				optional
+					MethodStaticCall
+			ClassCreation
+				alternative
+					ClassCreation.Class
+					ClassCreation.Interface
+					ClassCreation.Enum
+			DataTypeCreation
+				alternative
+					DataTypeCreation.Class
+					DataTypeCreation.Record
+			Inheritance
+			InterfaceRealization
+				optional
+					RealizationSuffix
+		optional
+			ConstructorCreation
+			ClassConstraints
+			EnumConstraints
+			InterfaceConstraints
+			ParameterConstraints
+
+constraints
+	ClassCreation.Class => ConstructorCreation
+	DataTypeCreation.Class => ClassCreation.Class
