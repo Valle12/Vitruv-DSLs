@@ -12,7 +12,7 @@ public class BlockMapper {
   private static final char OPEN_CURLY = '{';
   private static final char CLOSE_CURLY = '}';
   private static final Pattern REACTION_PATTERN =
-      Pattern.compile("@feature[^\\n]*type\\s*=\\s*\"(\\w+)\"[^\\n]*\\s*(reaction)\\s*\\w+\\s*\\{");
+      Pattern.compile("@feature[^\\n]*type\\s*=\\s*\"(.+)\"[^\\n]*\\s*(reaction)\\s*\\w+\\s*\\{");
   private static final Pattern ROUTINE_PATTERN =
       Pattern.compile("(routine)\\s+(\\w+)\\s*\\([^)]*\\)\\s*\\{");
 
@@ -25,7 +25,7 @@ public class BlockMapper {
   private Header extractHeader(String content) {
     int contentBegin = Integer.MAX_VALUE;
 
-    Pattern feature = Pattern.compile("@feature\\(type\\s*=\\s*\"\\w+\"\\)");
+    Pattern feature = Pattern.compile("@feature\\(type\\s*=\\s*\".+\"\\)");
     Matcher featureMatcher = feature.matcher(content);
     if (featureMatcher.find()) {
       contentBegin = featureMatcher.start();

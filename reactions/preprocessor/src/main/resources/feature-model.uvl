@@ -9,12 +9,12 @@ features
 			Multiplicity
 			InterfaceCreation
 				optional
-					InterfacePrefix
+					InterfacePrefix // TODO
 			EnumCreation
 			ClassDeletion
 			AttributeCreation
 				optional
-					AccessorGeneration
+					AccessorGeneration // TODO
 			AttributeDeletion
 			AttributeType
 			MethodCreation
@@ -25,25 +25,25 @@ features
 			ClassModifiers
 			AttributeModifiers
 				optional
-					AttributeStaticCall
+					AttributeStaticCall // TODO
 			MethodModifiers
 				optional
-					MethodStaticCall
+					MethodStaticCall // TODO
 			ClassCreation
 				alternative
 					ClassCreation.Class
-					ClassCreation.Interface
-					ClassCreation.Enum
+					ClassCreation.Interface // TODO
+					ClassCreation.Enum // TODO
 			DataTypeCreation
 				alternative
 					DataTypeCreation.Class
-					DataTypeCreation.Record
+					DataTypeCreation.Record // TODO
 			Inheritance
 			InterfaceRealization
 				optional
-					RealizationSuffix
+					RealizationSuffix // TODO
 		optional
-			ConstructorCreation
+			ConstructorCreation // TODO
 			ClassConstraints
 			EnumConstraints
 			InterfaceConstraints
