@@ -27,7 +27,7 @@ routine createOrFindJavaClass(uml::Classifier umlClassifier) {
 	}
 }
 
-@feature(type = umlClassToJavaClass)
+@feature(type = "umlClassToJavaClass")
 reaction UmlClassInserted {
 	after element uml::Class inserted in uml::Package[packagedElement]
 	call {

@@ -28,7 +28,7 @@ execute actions in java
 //===========================================
 //=========================================== Class
 //===========================================
-@feature(type = umlClassToJavaClass)
+@feature(type = "umlClassToJavaClass")
 reaction UmlClassInserted {
 	after element uml::Class inserted in uml::Package[packagedElement]
 	call {
@@ -110,7 +110,7 @@ routine insertJavaClassifier(uml::Classifier umlClassifier, uml::Package umlPack
 	}
 }
 
-@feature(type = umlClassRenamed)
+@feature(type = "umlClassRenamed")
 reaction UmlClassifierRenamed {
 	after attribute replaced at uml::Classifier[name]
 	call renameJavaClassifier(affectedEObject)

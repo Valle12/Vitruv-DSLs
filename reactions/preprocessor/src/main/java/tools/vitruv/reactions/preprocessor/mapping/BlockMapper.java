@@ -65,8 +65,8 @@ public class BlockMapper {
     Matcher reactionMatcher = REACTION_PATTERN.matcher(content);
     Matcher routineMatcher = ROUTINE_PATTERN.matcher(content);
 
-    Map<String, List<String>> reactions = new HashMap<>();
-    Map<String, String> routines = new HashMap<>();
+    Map<String, List<String>> reactions = new LinkedHashMap<>();
+    Map<String, String> routines = new LinkedHashMap<>();
 
     boolean hasReaction = reactionMatcher.find();
     boolean hasRoutine = routineMatcher.find();

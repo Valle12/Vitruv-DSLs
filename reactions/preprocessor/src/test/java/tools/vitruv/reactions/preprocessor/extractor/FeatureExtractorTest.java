@@ -20,6 +20,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import tools.vitruv.reactions.preprocessor.mapping.BlockMapper;
 import tools.vitruv.reactions.preprocessor.model.CodeBlocks;
+import tools.vitruv.reactions.preprocessor.model.Header;
 import tools.vitruv.reactions.preprocessor.model.ReactionsFile;
 import tools.vitruv.reactions.preprocessor.reader.ConfigReader;
 import tools.vitruv.reactions.preprocessor.reader.ReactionsReader;
@@ -82,7 +83,7 @@ class FeatureExtractorTest {
   void test4() {
     ReactionsFile mockReactionsFile = mock(ReactionsFile.class);
     CodeBlocks mockBlocks = mock(CodeBlocks.class);
-    when(mockReactionsFile.header()).thenReturn("");
+    when(mockReactionsFile.header()).thenReturn(new Header("dummy", ""));
     when(mockReactionsFile.codeBlocks()).thenReturn(mockBlocks);
 
     try (MockedConstruction<ConfigReader> ignored = mockConstruction(ConfigReader.class);
@@ -119,9 +120,9 @@ class FeatureExtractorTest {
   void test5() {
     ReactionsFile mockReactionsFile = mock(ReactionsFile.class);
     CodeBlocks mockBlocks = mock(CodeBlocks.class);
-    when(mockReactionsFile.header()).thenReturn("");
+    when(mockReactionsFile.header()).thenReturn(new Header("dummy", ""));
     when(mockReactionsFile.codeBlocks()).thenReturn(mockBlocks);
-    when(mockBlocks.reactions()).thenReturn(Map.of("feat1", "content"));
+    when(mockBlocks.reactions()).thenReturn(Map.of("feat1", List.of("content")));
 
     try (MockedConstruction<ConfigReader> ignored =
             mockConstruction(
@@ -171,16 +172,17 @@ class FeatureExtractorTest {
   @Test
   @DisplayName("Test successful execution")
   void test6() {
-    Map<String, String> reactions = new HashMap<>();
-    reactions.put("feat1", "call routA and unknown");
-    reactions.put("feat2", "should be ignored");
+    Map<String, List<String>> reactions = new HashMap<>();
+    reactions.put("feat1", List.of("call routA and unknown"));
+    reactions.put("feat2", List.of("should be ignored"));
 
     Map<String, String> routines = new HashMap<>();
     routines.put("routA", "call routB");
     routines.put("routB", "call routA");
 
     ReactionsFile reactionsFile =
-        new ReactionsFile("HEADER_CONTENT\n", new CodeBlocks(reactions, routines));
+        new ReactionsFile(
+            new Header("dummyReactions", "HEADER_CONTENT\n"), new CodeBlocks(reactions, routines));
 
     try (MockedConstruction<ConfigReader> ignored =
             mockConstruction(

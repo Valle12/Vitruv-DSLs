@@ -1,15 +1,16 @@
 package tools.vitruv.reactions.preprocessor.mapping;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.vitruv.reactions.preprocessor.model.Header;
 import tools.vitruv.reactions.preprocessor.model.ReactionsFile;
 import tools.vitruv.reactions.preprocessor.reader.TextReader;
 
@@ -29,7 +30,9 @@ class BlockMapperTest {
 
     ReactionsFile result = blockMapper.extractBlocks(content);
 
-    assertTrue(result.header().isEmpty());
+    Header header = result.header();
+    assertTrue(header.header().isEmpty());
+    assertTrue(header.reactionsName().isEmpty());
     assertTrue(result.codeBlocks().reactions().isEmpty());
     assertTrue(result.codeBlocks().routines().isEmpty());
   }
@@ -48,7 +51,9 @@ class BlockMapperTest {
 
     ReactionsFile result = blockMapper.extractBlocks(content);
 
-    assertTrue(result.header().contains("import umlToJavaAttribute using qualified names"));
+    Header header = result.header();
+    assertTrue(header.header().contains("import umlToJavaAttribute using qualified names"));
+    assertEquals("umlToJava", header.reactionsName());
     assertTrue(result.codeBlocks().reactions().isEmpty());
     assertTrue(result.codeBlocks().routines().isEmpty());
   }
@@ -69,17 +74,21 @@ class BlockMapperTest {
 
     ReactionsFile result = blockMapper.extractBlocks(content);
 
-    assertTrue(result.header().contains("reactions: umlToJavaClassifier"));
-    assertTrue(result.codeBlocks().reactions().size() > 1);
-    Map<String, String> reaction = result.codeBlocks().reactions();
+    Header header = result.header();
+    assertTrue(header.header().contains("reactions: umlToJavaClassifier"));
+    assertEquals("umlToJavaClassifier", header.reactionsName());
+    Map<String, List<String>> reactions = result.codeBlocks().reactions();
+    assertTrue(reactions.size() > 1);
+    List<String> umlClassToJavaClassReactions = reactions.get("umlClassToJavaClass");
+    assertFalse(umlClassToJavaClassReactions.isEmpty());
     assertTrue(
-        reaction
-            .get("umlClassToJavaClass")
+        umlClassToJavaClassReactions
+            .get(0)
             .contains("after element uml::Class inserted in uml::Package[packagedElement]"));
-    assertTrue(result.codeBlocks().routines().size() > 1);
-    Map<String, String> routine = result.codeBlocks().routines();
+    Map<String, String> routines = result.codeBlocks().routines();
+    assertTrue(routines.size() > 1);
     assertTrue(
-        routine
+        routines
             .get("createOrFindJavaClass")
             .contains("require absence of java::Class corresponding to umlClassifier"));
   }
@@ -98,17 +107,21 @@ class BlockMapperTest {
 
     ReactionsFile result = blockMapper.extractBlocks(content);
 
-    assertTrue(result.header().contains("reactions: umlToJavaClassifier"));
-    assertEquals(1, result.codeBlocks().reactions().size());
-    Map<String, String> reaction = result.codeBlocks().reactions();
+    Header header = result.header();
+    assertTrue(header.header().contains("reactions: umlToJavaClassifier"));
+    assertEquals("umlToJavaClassifier", header.reactionsName());
+    Map<String, List<String>> reactions = result.codeBlocks().reactions();
+    assertEquals(1, reactions.size());
+    List<String> umlClassToJavaClassReactions = reactions.get("umlClassToJavaClass");
+    assertFalse(umlClassToJavaClassReactions.isEmpty());
     assertTrue(
-        reaction
-            .get("umlClassToJavaClass")
+        umlClassToJavaClassReactions
+            .get(0)
             .contains("after element uml::Class inserted in uml::Package[packagedElement]"));
-    assertEquals(1, result.codeBlocks().routines().size());
-    Map<String, String> routine = result.codeBlocks().routines();
+    Map<String, String> routines = result.codeBlocks().routines();
+    assertEquals(1, routines.size());
     assertTrue(
-        routine
+        routines
             .get("createOrFindJavaClass")
             .contains("require absence of java::Class corresponding to umlClassifier"));
   }

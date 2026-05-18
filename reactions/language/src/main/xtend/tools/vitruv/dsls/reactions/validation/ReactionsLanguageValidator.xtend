@@ -28,6 +28,7 @@ import tools.vitruv.dsls.common.elements.ElementsPackage
 import org.eclipse.emf.ecore.ETypedElement
 import tools.vitruv.dsls.reactions.language.ElementInsertionInListChangeType
 import tools.vitruv.dsls.reactions.language.ElementRemovalFromListChangeType
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils
 
 /**
  * This class contains custom validation rules. 
@@ -36,6 +37,31 @@ import tools.vitruv.dsls.reactions.language.ElementRemovalFromListChangeType
  */
 class ReactionsLanguageValidator extends AbstractReactionsLanguageValidator {
 	@Inject ReactionsImportScopeHelper reactionsImportScopeHelper;
+
+	@Check
+	def checkNoFeatureAnnotations(ReactionsFile reactionsFile) {
+		val node = NodeModelUtils.getNode(reactionsFile);
+		if (node === null) {
+			return;
+		}
+
+		val leaves = node.leafNodes.filter[!hidden].iterator
+		var previousText = ""
+		while (leaves.hasNext) {
+			val text = leaves.next.text
+			if ("@".equals(previousText) && "feature".equals(text)) {
+				error(
+					"Found '@feature' annotation in reactions source. Run the reactions preprocessor " +
+						"before compiling, and point the compiler at the generated '<config>-reactions' directory.",
+					reactionsFile,
+					TopLevelElementsPackage.Literals.REACTIONS_FILE__REACTIONS_SEGMENTS
+				)
+				return
+			}
+
+			previousText = text
+		}
+	}
 
 	@Check
 	def checkReactionsFile(ReactionsFile reactionsFile) {
