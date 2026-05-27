@@ -5,22 +5,35 @@
 
 import * as path from "path";
 
-import { ExtensionContext } from "vscode";
+import { ExtensionContext, workspace } from "vscode";
 import {
-	Executable,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind,
 } from "vscode-languageclient/node";
 
+const LSP_JAR = "tools.vitruv.dsls.reactions.ide.jar";
+// kept in sync with the shade plugin's <mainClass> in reactions/ide/pom.xml
+const LSP_MAIN_CLASS = "tools.vitruv.dsls.reactions.ide.ReactionsServerLauncher";
+
+function buildJavaArgs(extraJars: string[]): string[] {
+	if (extraJars.length === 0) {
+		return ["-jar", LSP_JAR, "-log", "-trace"];
+	}
+	const classpath = [LSP_JAR, ...extraJars].join(path.delimiter);
+	return ["-cp", classpath, LSP_MAIN_CLASS, "-log", "-trace"];
+}
+
 export async function activate(context: ExtensionContext) {
+	const additionalJars = workspace
+		.getConfiguration("reactions")
+		.get<string[]>("additionalMetamodelJars", []);
+
 	const xtextServerOptions: ServerOptions = {
 		command: "java",
 		transport: TransportKind.stdio,
-		args: [
-			"-jar", "tools.vitruv.dsls.reactions.ide.jar","-log",'-trace'
-		],
+		args: buildJavaArgs(additionalJars),
 		options: {
 			cwd: context.extensionPath,
 		},
@@ -38,7 +51,6 @@ export async function activate(context: ExtensionContext) {
 	);
 
 	await client.start();
-
 	context.subscriptions.push(client);
 
 	return client;

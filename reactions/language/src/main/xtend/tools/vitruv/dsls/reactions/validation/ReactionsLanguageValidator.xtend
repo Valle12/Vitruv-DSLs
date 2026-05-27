@@ -5,6 +5,7 @@ package tools.vitruv.dsls.reactions.validation
 
 import com.google.inject.Inject
 import org.eclipse.xtext.validation.Check
+import org.eclipse.xtext.validation.CheckType
 import tools.vitruv.dsls.reactions.language.toplevelelements.TopLevelElementsPackage
 import java.util.HashMap
 import tools.vitruv.dsls.reactions.language.toplevelelements.Routine
@@ -38,7 +39,7 @@ import org.eclipse.xtext.nodemodel.util.NodeModelUtils
 class ReactionsLanguageValidator extends AbstractReactionsLanguageValidator {
 	@Inject ReactionsImportScopeHelper reactionsImportScopeHelper;
 
-	@Check
+	@Check(CheckType.EXPENSIVE)
 	def checkNoFeatureAnnotations(ReactionsFile reactionsFile) {
 		val node = NodeModelUtils.getNode(reactionsFile);
 		if (node === null) {

@@ -4,7 +4,11 @@
 package tools.vitruv.dsls.reactions.ide
 
 import com.google.inject.Guice
+import javax.xml.parsers.DocumentBuilderFactory
+import org.apache.logging.log4j.LogManager
+import org.eclipse.emf.ecore.EPackage
 import org.eclipse.xtext.util.Modules2
+import org.w3c.dom.Element
 import tools.vitruv.dsls.reactions.ReactionsLanguageRuntimeModule
 import tools.vitruv.dsls.reactions.ReactionsLanguageStandaloneSetup
 
@@ -13,8 +17,52 @@ import tools.vitruv.dsls.reactions.ReactionsLanguageStandaloneSetup
  */
 class ReactionsLanguageIdeSetup extends ReactionsLanguageStandaloneSetup {
 
+	static val LOG = LogManager.getLogger(ReactionsLanguageIdeSetup)
+
 	override createInjector() {
 		Guice.createInjector(Modules2.mixin(new ReactionsLanguageRuntimeModule, new ReactionsLanguageIdeModule))
 	}
-	
+
+	override createInjectorAndDoEMFRegistration() {
+		registerBundledMetamodelsFromPluginXml()
+		super.createInjectorAndDoEMFRegistration()
+	}
+
+	def private static void registerBundledMetamodelsFromPluginXml() {
+		val classLoader = ReactionsLanguageIdeSetup.classLoader
+		try (val stream = classLoader.getResourceAsStream("plugin.xml")) {
+			if (stream === null) {
+				LOG.debug("No bundled plugin.xml on classpath; skipping metamodel registration.")
+				return
+			}
+
+			val factory = DocumentBuilderFactory.newInstance() => [
+				namespaceAware = false
+			]
+
+			val doc = factory.newDocumentBuilder().parse(stream)
+			val nodes = doc.getElementsByTagName("package")
+			var registered = 0
+			for (var i = 0; i < nodes.length; i++) {
+				val node = nodes.item(i) as Element
+				val uri = node.getAttribute("uri")
+				val className = node.getAttribute("class")
+				if (!uri.nullOrEmpty && !className.nullOrEmpty
+						&& !EPackage.Registry.INSTANCE.containsKey(uri)) {
+					try {
+						val cls = Class.forName(className, true, classLoader)
+						val pkg = cls.getField("eINSTANCE").get(null) as EPackage
+						EPackage.Registry.INSTANCE.put(uri, pkg)
+						registered++
+					} catch (Throwable t) {
+						LOG.debug('''Skipping «uri» («className»): «t.message»''')
+					}
+				}
+			}
+			LOG.info('''Registered «registered» bundled EPackages from plugin.xml.''')
+		} catch (Throwable t) {
+			LOG.error("Failed to scan bundled plugin.xml for metamodels.", t)
+		}
+	}
+
 }

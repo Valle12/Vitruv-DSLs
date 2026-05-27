@@ -1,2 +1,7 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
+
+# Maven Wrapper: the POSIX script must stay LF (so it runs under sh in
+# WSL/Linux/macOS); the Windows batch wrapper must stay CRLF.
+mvnw     text eol=lf
+mvnw.cmd text eol=crlf

@@ -15,6 +15,33 @@
     <name>Vitruv Reactions IDE</name>
     <description>IDE integration with LSP server</description>
 
+    <properties>
+        <repo.emftext-jamopp.version>latest</repo.emftext-jamopp.version>
+        <repo.eclipse.version>2023-03</repo.eclipse.version>
+        <repo.palladio.version>5.0.0</repo.palladio.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>emftext-jamopp</id>
+            <name>EMFText and JaMoPP (P2 Wrapper)</name>
+            <layout>p2</layout>
+            <url>https://kit-sdq.github.io/updatesite/release/p2-wrapper/${repo.emftext-jamopp.version}/</url>
+        </repository>
+        <repository>
+            <id>eclipse</id>
+            <name>Eclipse</name>
+            <layout>p2</layout>
+            <url>http://download.eclipse.org/releases/${repo.eclipse.version}</url>
+        </repository>
+        <repository>
+            <id>palladio</id>
+            <name>Palladio Simulator</name>
+            <layout>p2</layout>
+            <url>https://updatesite.palladio-simulator.com/palladio-build-updatesite/releases/${repo.palladio.version}/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -31,7 +58,61 @@
             <artifactId>org.eclipse.xtext.xbase.ide</artifactId>
             <version>${xtextVersion}</version>
         </dependency>
+
+        <!-- common metamodels -->
+        <dependency>
+            <groupId>emftext-jamopp</groupId>
+            <artifactId>org.emftext.commons.layout</artifactId>
+            <version>1.4.1.v201207310007</version>
+        </dependency>
+        <dependency>
+            <groupId>emftext-jamopp</groupId>
+            <artifactId>org.emftext.language.java</artifactId>
+            <version>1.4.1.v201901100335</version>
+        </dependency>
+        <dependency>
+            <groupId>emftext-jamopp</groupId>
+            <artifactId>org.emftext.language.java.resource</artifactId>
+            <version>1.4.1.v201901100335</version>
+        </dependency>
+        <dependency>
+            <groupId>eclipse</groupId>
+            <artifactId>org.eclipse.uml2.uml</artifactId>
+            <version>5.5.0.v20221116-1811</version>
+        </dependency>
+        <dependency>
+            <groupId>eclipse</groupId>
+            <artifactId>org.eclipse.uml2.uml.resources</artifactId>
+            <version>5.5.0.v20221116-1811</version>
+        </dependency>
+        <!-- PCM's generated EObjects extend CDOObject, so CDO must be on the classpath -->
+        <dependency>
+            <groupId>eclipse</groupId>
+            <artifactId>org.eclipse.emf.cdo</artifactId>
+            <version>4.21.0.v20230221-1613</version>
+        </dependency>
+        <dependency>
+            <groupId>palladio</groupId>
+            <artifactId>org.palladiosimulator.pcm</artifactId>
+            <version>5.0.0.202102051710</version>
+        </dependency>
+        <dependency>
+            <groupId>palladio</groupId>
+            <artifactId>org.palladiosimulator.pcm.resources</artifactId>
+            <version>5.0.0.202102051710</version>
+        </dependency>
     </dependencies>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>artifactory.openntf.org</id>
+            <name>artifactory.openntf.org</name>
+            <url>https://artifactory.openntf.org/openntf</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
     <build>
         <finalName>${project.artifactId}</finalName>
@@ -41,6 +122,12 @@
             </resource>
         </resources>
         <plugins>
+            <plugin>
+                <groupId>org.openntf.maven</groupId>
+                <artifactId>p2-layout-resolver</artifactId>
+                <version>1.9.0</version>
+                <extensions>true</extensions>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -60,10 +147,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
                 <groupId>org.eclipse.xtend</groupId>
                 <artifactId>xtend-maven-plugin</artifactId>
             </plugin>
@@ -74,7 +157,7 @@
                     <transformers>
                         <transformer
                                 implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                            <mainClass>org.eclipse.xtext.ide.server.ServerLauncher</mainClass>
+                            <mainClass>tools.vitruv.dsls.reactions.ide.ReactionsServerLauncher</mainClass>
                         </transformer>
                         <transformer
                                 implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
@@ -82,6 +165,11 @@
                         </transformer>
                         <transformer
                                 implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer">
+                        </transformer>
+                        <transformer
+                                implementation="org.apache.maven.plugins.shade.resource.XmlAppendingTransformer">
+                            <resource>plugin.xml</resource>
+                            <ignoreDtd>true</ignoreDtd>
                         </transformer>
                     </transformers>
                     <minimizeJar>false</minimizeJar>
@@ -109,7 +197,6 @@
                                         <exclude>*.html</exclude>
                                         <exclude>about.*</exclude>
                                         <exclude>about_files/*</exclude>
-                                        <exclude>plugin.xml</exclude>
                                         <exclude>systembundle.properties</exclude>
                                         <exclude>profile.list</exclude>
                                         <exclude>**/*._trace</exclude>

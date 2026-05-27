@@ -35,7 +35,18 @@
 				"scopeName": "source.reactionslanguage",
 				"path": "./src/lsp/reactionslanguage.tmLanguage.json"
 			}
-		]
+		],
+		"configuration": {
+			"title": "Reactions",
+			"properties": {
+				"reactions.additionalMetamodelJars": {
+					"type": "array",
+					"items": { "type": "string" },
+					"default": [],
+					"markdownDescription": "Absolute paths to additional metamodel jars to load into the Reactions language server classpath. Each jar's `plugin.xml` is auto-registered via `EcorePlugin.ExtensionProcessor`. Use this for metamodels not bundled out of the box (the umljava demo metamodels — EMFText Java and UML2 — are bundled)."
+				}
+			}
+		}
 	},
 	"files": [
 		"package.json",
