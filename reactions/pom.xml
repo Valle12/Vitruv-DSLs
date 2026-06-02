@@ -26,6 +26,6 @@
     <module>language</module>
     <module>runtime</module>
     <module>preprocessor</module>
-      <module>migration</module>
+    <module>migration</module>
   </modules>
 </project>
