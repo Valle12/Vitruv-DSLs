@@ -1,7 +1,9 @@
-package tools.vitruv.migration;
+package tools.vitruv.interaction;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.change.interaction.UserInteractionOptions.InputValidator;
@@ -9,19 +11,23 @@ import tools.vitruv.change.interaction.UserInteractionOptions.NotificationType;
 import tools.vitruv.change.interaction.UserInteractionOptions.WindowModality;
 
 @Slf4j
-public final class DetectingUserInteraction implements InteractionResultProvider {
+@NoArgsConstructor(force = true)
+@RequiredArgsConstructor
+// TODO maybe empty constructor for no fallback might be needed
+public class DetectingUserInteraction implements InteractionResultProvider {
   private static final String CONFIRMATION = "confirmation";
   private static final String TEXT_INPUT = "text input";
   private static final String SINGLE_SELECTION = "single selection";
   private static final String MULTI_SELECTION = "multiple selection";
   private final List<String> requestedInteractions = new ArrayList<>();
+  private final InteractionResultProvider fallback;
 
   public List<String> getRequestedInteractions() {
     return List.copyOf(requestedInteractions);
   }
 
-  private RuntimeException require(String kind, String message) {
-    String description = kind + ": " + message;
+  private RuntimeException addRequestedInteraction(String kind, String message) {
+    String description = "%s: %s".formatted(kind, message);
     requestedInteractions.add(description);
     return new UserInteractionRequiredException(
         "A reaction requires user interaction (" + description + ")");
@@ -35,7 +41,13 @@ public final class DetectingUserInteraction implements InteractionResultProvider
       String positive,
       String negative,
       String cancel) {
-    throw require(CONFIRMATION, message);
+    RuntimeException unanswered = addRequestedInteraction(CONFIRMATION, message);
+    if (fallback == null) {
+      throw unanswered;
+    }
+
+    return fallback.getConfirmationInteractionResult(
+        modality, title, message, positive, negative, cancel);
   }
 
   @Override
@@ -46,7 +58,13 @@ public final class DetectingUserInteraction implements InteractionResultProvider
       String positive,
       String negative,
       InputValidator validator) {
-    throw require(TEXT_INPUT, message);
+    RuntimeException unanswered = addRequestedInteraction(TEXT_INPUT, message);
+    if (fallback == null) {
+      throw unanswered;
+    }
+
+    return fallback.getTextInputInteractionResult(
+        modality, title, message, positive, negative, validator);
   }
 
   @Override
@@ -57,7 +75,13 @@ public final class DetectingUserInteraction implements InteractionResultProvider
       String positive,
       String negative,
       Iterable<String> choices) {
-    throw require(SINGLE_SELECTION, message);
+    RuntimeException unanswered = addRequestedInteraction(SINGLE_SELECTION, message);
+    if (fallback == null) {
+      throw unanswered;
+    }
+
+    return fallback.getMultipleChoiceSingleSelectionInteractionResult(
+        modality, title, message, positive, negative, choices);
   }
 
   @Override
@@ -68,7 +92,13 @@ public final class DetectingUserInteraction implements InteractionResultProvider
       String positive,
       String negative,
       Iterable<String> choices) {
-    throw require(MULTI_SELECTION, message);
+    RuntimeException unanswered = addRequestedInteraction(MULTI_SELECTION, message);
+    if (fallback == null) {
+      throw unanswered;
+    }
+
+    return fallback.getMultipleChoiceMultipleSelectionInteractionResult(
+        modality, title, message, positive, negative, choices);
   }
 
   @Override
@@ -79,11 +109,5 @@ public final class DetectingUserInteraction implements InteractionResultProvider
       String positive,
       NotificationType type) {
     log.info("Reaction notification [{}]: {}", type, message);
-  }
-
-  public static final class UserInteractionRequiredException extends RuntimeException {
-    UserInteractionRequiredException(String message) {
-      super(message);
-    }
   }
 }

@@ -5,16 +5,11 @@ import java.util.stream.Collectors;
 import tools.vitruv.change.composite.MetamodelDescriptor;
 import tools.vitruv.change.propagation.ChangePropagationSpecification;
 
-public final class PropagationGraph {
+public class PropagationGraph {
   private final Map<Set<String>, ReachableNodes> outgoing;
 
-  private PropagationGraph(Map<Set<String>, ReachableNodes> outgoing) {
-    this.outgoing = outgoing;
-  }
-
-  public static PropagationGraph fromSpecifications(
-      Collection<? extends ChangePropagationSpecification> specifications) {
-    Map<Set<String>, ReachableNodes> outgoing = new HashMap<>();
+  public PropagationGraph(List<ChangePropagationSpecification> specifications) {
+    outgoing = new HashMap<>();
     for (ChangePropagationSpecification specification : specifications) {
       Set<String> source = nodeOf(specification.getSourceMetamodelDescriptor());
       Set<String> target = nodeOf(specification.getTargetMetamodelDescriptor());
@@ -22,8 +17,6 @@ public final class PropagationGraph {
       outgoing.computeIfAbsent(target, key -> new ReachableNodes(new LinkedHashSet<>()));
       outgoing.get(source).reachableNodes().add(target);
     }
-
-    return new PropagationGraph(outgoing);
   }
 
   private static Set<String> nodeOf(MetamodelDescriptor descriptor) {
@@ -35,7 +28,7 @@ public final class PropagationGraph {
         .anyMatch(declaredUri -> nsUri.equals(declaredUri) || nsUri.startsWith(declaredUri + "/"));
   }
 
-  static String shortName(Set<String> node) {
+  public static String shortName(Set<String> node) {
     return node.isEmpty() ? "<none>" : node.iterator().next();
   }
 
@@ -44,20 +37,20 @@ public final class PropagationGraph {
   }
 
   public ReachableNodes reachableFrom(Set<String> start) {
-    Set<Set<String>> reachable = new HashSet<>();
+    ReachableNodes reachable = new ReachableNodes(new HashSet<>());
     Deque<Set<String>> queue =
         new ArrayDeque<>(outgoing.getOrDefault(start, ReachableNodes.EMPTY).reachableNodes());
     while (!queue.isEmpty()) {
       Set<String> current = queue.poll();
-      if (reachable.add(current)) {
+      if (reachable.reachableNodes().add(current)) {
         queue.addAll(outgoing.getOrDefault(current, ReachableNodes.EMPTY).reachableNodes());
       }
     }
 
-    return new ReachableNodes(reachable);
+    return reachable;
   }
 
-  public boolean reachesAll(Set<String> start, Collection<Set<String>> targets) {
+  public boolean reachesAll(Set<String> start, Set<Set<String>> targets) {
     ReachableNodes reachable = reachableFrom(start);
     for (Set<String> target : targets) {
       if (!target.equals(start) && !reachable.contains(target)) {

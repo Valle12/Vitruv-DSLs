@@ -1,4 +1,4 @@
-package tools.vitruv.migration;
+package tools.vitruv.strategy;
 
 import java.util.Optional;
 import java.util.Set;

@@ -1,0 +1,10 @@
+file:/__VSUM_ROOT__/src/Identifiable.java
+file:/__VSUM_ROOT__/src/OrderStatus.java
+file:/__VSUM_ROOT__/src/Customer.java
+file:/__VSUM_ROOT__/src/PremiumCustomer.java
+file:/__VSUM_ROOT__/src/Order.java
+file:/__VSUM_ROOT__/model/model.uml
+pathmap://UML_LIBRARIES/JavaPrimitiveTypes.library.uml
+pathmap://UML_LIBRARIES/UMLPrimitiveTypes.library.uml
+pathmap://UML_PROFILES/Ecore.profile.uml
+pathmap:/javaclass/java.lang.Object.java

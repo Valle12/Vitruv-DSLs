@@ -1,18 +1,19 @@
-package tools.vitruv.migration;
+package tools.vitruv.strategy;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import tools.vitruv.migration.PropagationGraph;
 
 @Slf4j
 public final class MinReDerivationLossDominanceStrategy implements DominanceStrategy {
   @Override
   public Optional<Set<String>> selectDominant(DominanceContext context) {
-    List<Set<String>> reachingAll =
+    Set<Set<String>> reachingAll =
         context.presentNodes().stream()
             .filter(node -> context.graph().reachesAll(node, context.presentNodes()))
-            .toList();
+            .collect(Collectors.toSet());
     if (reachingAll.isEmpty()) {
       log.warn(
           "No present metamodel can reach all others via propagation; cannot measure"
@@ -22,18 +23,18 @@ public final class MinReDerivationLossDominanceStrategy implements DominanceStra
     }
 
     Set<String> best = null;
-    long bestLoss = Long.MAX_VALUE;
+    long minLoss = Long.MAX_VALUE;
     for (Set<String> candidate : reachingAll) {
       try {
         long loss = context.reDerivationLoss(candidate);
         log.info("Re-derivation loss for {}: {}", PropagationGraph.shortName(candidate), loss);
-        if (loss < bestLoss) {
-          bestLoss = loss;
+        if (loss < minLoss) {
+          minLoss = loss;
           best = candidate;
         }
       } catch (RuntimeException e) {
         log.warn(
-            "Skipping candidate {} - trial re-derivation did not complete: {}",
+            "Skipping candidate {}, trial re-derivation did not complete: {}",
             PropagationGraph.shortName(candidate),
             e.getMessage());
       }
@@ -45,7 +46,9 @@ public final class MinReDerivationLossDominanceStrategy implements DominanceStra
     }
 
     log.info(
-        "Selected {} as dominant with minimal loss {}", PropagationGraph.shortName(best), bestLoss);
+        "Selected {} as dominant model with minimal loss {}",
+        PropagationGraph.shortName(best),
+        minLoss);
     return Optional.of(best);
   }
 }
