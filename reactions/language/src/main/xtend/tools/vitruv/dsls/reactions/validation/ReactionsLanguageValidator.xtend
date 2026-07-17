@@ -65,6 +65,40 @@ class ReactionsLanguageValidator extends AbstractReactionsLanguageValidator {
 	}
 
 	@Check
+	def checkFeatureAnnotationKey(ReactionsFile reactionsFile) {
+		val node = NodeModelUtils.getNode(reactionsFile);
+		if (node === null) {
+			return;
+		}
+
+		val leaves = node.leafNodes.filter[!hidden].iterator
+		var previousText = ""
+		var expectKeyIn = 0
+		while (leaves.hasNext) {
+			val leaf = leaves.next
+			val text = leaf.text
+			if (expectKeyIn == 1) {
+				if (!"type".equals(text)) {
+					acceptError(
+						"Unknown '@feature' annotation key '" + text + "'. Only 'type' is allowed.",
+						reactionsFile,
+						leaf.offset,
+						leaf.length,
+						null
+					)
+				}
+				expectKeyIn = 0
+			} else if (expectKeyIn == 2) {
+				expectKeyIn = if ("(".equals(text)) 1 else 0
+			} else if ("@".equals(previousText) && "feature".equals(text)) {
+				expectKeyIn = 2
+			}
+
+			previousText = text
+		}
+	}
+
+	@Check
 	def checkReactionsFile(ReactionsFile reactionsFile) {
 		// check for duplicate reactions segment names in same file:
 		val alreadyCheckedSegments = new HashMap<String, ReactionsSegment>();

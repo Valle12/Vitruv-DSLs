@@ -79,6 +79,44 @@ class AnnotationCompilationTest {
 	}
 
 	@Test
+	def void testWrongFeatureAnnotationKeyProducesValidationError() {
+		val source = '''
+			import "http://tools.vitruv.change.testutils.metamodels.allElementTypes" as minimal
+
+			reactions: annotationWrongKey
+			in reaction to changes in minimal
+			execute actions in minimal
+
+			@feature(kind="basic")
+			reaction InsertedNonRootAnnotated {
+				after element minimal::NonRoot inserted in minimal::NonRootObjectContainerHelper[nonRootObjectsContainment]
+				call insertNonRoot(newValue)
+			}
+
+			routine insertNonRoot(minimal::NonRoot nonRootElement) {
+				match {
+					require absence of minimal::NonRoot corresponding to nonRootElement
+				}
+				create {
+					val newNonRoot = new minimal::NonRoot
+				}
+				update {
+					newNonRoot.id = nonRootElement.id
+				}
+			}
+		'''
+
+		val parsed = parseHelper.parse(source, resourceSetProvider.get())
+		validationHelper.assertError(
+			parsed,
+			TopLevelElementsPackage.Literals.REACTIONS_FILE,
+			null,
+			"Unknown '@feature' annotation key 'kind'",
+			"Only 'type' is allowed"
+		)
+	}
+
+	@Test
 	def void testNoFeatureAnnotationErrorOnPreprocessedSource() {
 		val source = '''
 			import "http://tools.vitruv.change.testutils.metamodels.allElementTypes" as minimal

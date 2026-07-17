@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>tools.vitruv</groupId>
         <artifactId>tools.vitruv.dsls.reactions</artifactId>
-        <version>3.2.4-SNAPSHOT</version>
+        <version>4.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>preprocessor</artifactId>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <log4j.version>2.25.4</log4j.version>
         <lombok.version>1.18.44</lombok.version>
         <jackson.version>3.1.2</jackson.version>
-        <junit.version>6.0.3</junit.version>
+        <junit.version>6.1.1</junit.version>
         <mockito.version>5.23.0</mockito.version>
     </properties>
 

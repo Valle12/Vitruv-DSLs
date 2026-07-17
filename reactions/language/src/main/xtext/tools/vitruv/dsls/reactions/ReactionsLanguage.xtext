@@ -179,7 +179,7 @@ UpdateBlock returns toplevelelements::UpdateBlock:
 
 // *********** ANNOTATION ***********
 Annotation:
-	'@' 'feature' '(' 'type' '=' STRING ')';
+	'@' 'feature' '(' ValidID '=' STRING ')';
 
 // ****** CODE BLOCKS ******
 fragment MetaclassReference returns common::MetaclassReference:

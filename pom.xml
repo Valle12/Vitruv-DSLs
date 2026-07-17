@@ -11,7 +11,7 @@
   </parent>
   <!-- Project Information -->
   <artifactId>tools.vitruv.dsls</artifactId>
-  <version>4.0.1-SNAPSHOT</version>
+  <version>4.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Vitruv Consistency DSLs</name>
   <description>Domain specific languages for specifying consistency preservation rules in the Vitruv framework</description>
@@ -38,7 +38,8 @@
     <module>vitruvocl</module>
   </modules>
   <properties>
-    <vitruv-change.version>4.0.1-SNAPSHOT</vitruv-change.version>
+    <vitruv-change.version>4.1.0-SNAPSHOT</vitruv-change.version>
+    <vitruv-framework.version>4.0.0</vitruv-framework.version>
     <!-- SonarQube configuration -->
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     <sonar.organization>vitruv-tools</sonar.organization>
@@ -229,11 +230,11 @@
   <repositories>
     <!-- allow snapshots -->
     <repository>
-      <id>ossrh-snapshots</id>
-      <name>OSSRH Snapshots</name>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+      <id>central-portal-snapshots</id>
+      <name>Central Portal Snapshots</name>
+      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
       <snapshots>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </snapshots>
       <releases>
         <enabled>false</enabled>
