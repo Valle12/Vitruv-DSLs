@@ -70,8 +70,8 @@ class SourceUpdater {
   @SuppressWarnings("UnstableApiUsage")
   private static void registerRootsAt(
       CommittableView committable, List<EObject> roots, URI target) {
-    committable.registerRoot(roots.get(0), target);
-    Resource created = roots.get(0).eResource();
+    committable.registerRoot(roots.getFirst(), target);
+    Resource created = roots.getFirst().eResource();
     for (int i = 1; i < roots.size(); i++) {
       created.getContents().add(roots.get(i));
     }
@@ -427,10 +427,12 @@ class SourceUpdater {
 
   private List<Path> modelFiles(Path folder) {
     Path vsumMetadataFolder = folder.resolve("vsum");
+    Path consistencyMetadataFolder = folder.resolve("consistencymetadata");
     try (Stream<Path> paths = Files.walk(folder)) {
       return paths
           .filter(Files::isRegularFile)
           .filter(path -> !path.startsWith(vsumMetadataFolder))
+          .filter(path -> !path.startsWith(consistencyMetadataFolder))
           .filter(path -> !METADATA_EXTENSIONS.contains(fileExtension(path)))
           .filter(path -> !adapters.isPlatformLibraryResource(URI.createFileURI(path.toString())))
           .sorted()

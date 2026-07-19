@@ -13,7 +13,11 @@ import static extension tools.vitruv.dsls.reactions.codegen.helper.ClassNamesGen
 import static extension tools.vitruv.dsls.reactions.codegen.helper.ClassNamesGenerators.getChangePropagationSpecificationClassNameGenerator
 import static extension tools.vitruv.dsls.reactions.codegen.helper.ClassNamesGenerators.getRoutinesFacadesProviderClassNameGenerator
 import static extension tools.vitruv.dsls.reactions.codegen.helper.ReactionsElementsCompletionChecker.isReferenceable
+import static extension tools.vitruv.dsls.reactions.util.ReactionsLanguageUtil.getQualifiedName
+import java.util.Map
 import java.util.Set
+import tools.vitruv.change.propagation.ConsistencyRuleId
+import tools.vitruv.dsls.reactions.codegen.helper.ConsistencyRuleHashCalculator
 import tools.vitruv.change.composite.MetamodelDescriptor
 import tools.vitruv.dsls.reactions.runtime.structure.ReactionsImportPath
 import static com.google.common.base.Preconditions.checkState
@@ -74,6 +78,19 @@ class ChangePropagationSpecificationClassGenerator extends ClassGenerator {
 						addReaction(new «reactionsNameGenerator.qualifiedName»((executionState) -> createRoutinesFacadesProvider(executionState).getRoutinesFacade(«
 							»«ReactionsImportPath».fromPathString("«reactionsImportPath.pathString»"))));
 					«ENDFOR»
+				'''
+			]
+
+			// expose the semantic hash of each registered reaction (rule), computed at code generation time:
+			members += reactionsSegment.toMethod("getConsistencyRuleHashes",
+				typeRef(Map, typeRef(ConsistencyRuleId), typeRef(String))) [
+				visibility = JvmVisibility.PUBLIC
+				body = '''
+					«val hashCalculator = new ConsistencyRuleHashCalculator(reactionsSegment, jvmModelAssociations)»
+					return «Map».ofEntries(«
+					»«FOR reaction : reactionsSegment.includedReactions.keySet.filter[isReferenceable] SEPARATOR ','»
+						«Map».entry(new «ConsistencyRuleId»("«reaction.qualifiedName»"), "«hashCalculator.computeRuleHash(reaction)»")«
+					»«ENDFOR»);
 				'''
 			]
 		]

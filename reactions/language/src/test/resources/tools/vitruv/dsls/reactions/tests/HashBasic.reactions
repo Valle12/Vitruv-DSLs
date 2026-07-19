@@ -1,0 +1,46 @@
+import "http://tools.vitruv.change.testutils.metamodels.allElementTypes" as minimal
+
+reactions: hashBasic
+in reaction to changes in minimal
+execute actions in minimal
+
+reaction ReactionA {
+	after element minimal::NonRoot inserted in minimal::NonRootObjectContainerHelper[nonRootObjectsContainment]
+	call routineA(newValue)
+}
+
+reaction ReactionB {
+	after element minimal::Root inserted as root
+	call routineD(newValue)
+}
+
+routine routineA(minimal::NonRoot nonRootElement) {
+	match {
+		require absence of minimal::NonRoot corresponding to nonRootElement
+	}
+	create {
+		val newNonRoot = new minimal::NonRoot
+	}
+	update {
+		newNonRoot.id = nonRootElement.id
+		routineB(nonRootElement)
+	}
+}
+
+routine routineB(minimal::NonRoot nonRootElement) {
+	update {
+		nonRootElement.id = nonRootElement.id
+	}
+}
+
+routine routineC(minimal::NonRoot nonRootElement) {
+	update {
+		nonRootElement.id = nonRootElement.id
+	}
+}
+
+routine routineD(minimal::Root rootElement) {
+	update {
+		rootElement.id = rootElement.id
+	}
+}
