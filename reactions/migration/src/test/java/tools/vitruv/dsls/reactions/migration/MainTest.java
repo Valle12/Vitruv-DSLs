@@ -52,6 +52,17 @@ class MainTest {
   }
 
   @Test
+  @DisplayName("unknown migration mode fails")
+  void test8() {
+    assertEquals(
+        1,
+        Main.run(
+            new String[] {
+              "-m", tempDir.toString(), "-p", "specs.jar", "-d", "uml", "--mode", "bogus"
+            }));
+  }
+
+  @Test
   @DisplayName("nonexistent specification jar fails")
   void test7() {
     Path missingJar = tempDir.resolve("missing.jar");

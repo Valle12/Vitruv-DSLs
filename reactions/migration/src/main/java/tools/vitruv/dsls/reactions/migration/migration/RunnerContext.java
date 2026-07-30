@@ -1,5 +1,6 @@
 package tools.vitruv.dsls.reactions.migration.migration;
 
+import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ final class RunnerContext implements DominanceContext {
   private final Map<String, List<EObject>> rootsByNsUri;
   private final AdapterRegistry adapters;
   private final TrialMigration trialMigration;
+  private final Path vsumFolder;
 
   @Override
   public PropagationGraph graph() {
@@ -49,7 +51,7 @@ final class RunnerContext implements DominanceContext {
         if (resource != null
             && resource.getURI() != null
             && resource.getURI().isFile()
-            && !adapters.isPlatformLibraryResource(resource.getURI())
+            && !adapters.isPlatformLibraryResource(resource.getURI(), vsumFolder)
             && node.owns(root.eClass().getEPackage().getNsURI())) {
           uris.add(resource.getURI());
         }

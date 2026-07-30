@@ -1,6 +1,7 @@
 package tools.vitruv.dsls.reactions.migration.adapter;
 
 import java.util.Map;
+import java.util.Optional;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -15,17 +16,29 @@ public interface MetamodelAdapter {
     return Map.of();
   }
 
-  default void prepareForSnapshot(EObject root) {}
+  default void dropResolutionCaches(EObject root) {}
 
-  default void prepareForReplayInto(ResourceSet liveResourceSet, Resource detachedResource) {}
+  default void prepareForReplayInto(ResourceSet liveResourceSet, Iterable<EObject> detachedRoots) {}
 
   default void normalizeLoadedResource(Resource resource) {}
+
+  default boolean refreshSerializedForm(Resource resource) {
+    return false;
+  }
 
   default boolean requiresChangeRecording() {
     return false;
   }
 
-  default boolean isPlatformLibraryResource(URI uri) {
+  default boolean claimsResource(URI uri) {
     return false;
+  }
+
+  default boolean isPlatformLibraryResource(String vsumRelativePath) {
+    return false;
+  }
+
+  default Optional<String> externalIdentityOf(EObject element) {
+    return Optional.empty();
   }
 }

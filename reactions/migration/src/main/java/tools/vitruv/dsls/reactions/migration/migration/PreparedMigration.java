@@ -9,5 +9,6 @@ import tools.vitruv.dsls.reactions.migration.vsum.ModelSnapshot;
 record PreparedMigration(
     DominancePlan plan,
     ModelSnapshot sourceSnapshot,
-    Path derivedOriginalsFolder,
+    Path preMigrationFolder,
+    List<Path> oldDerivedFiles,
     List<URI> modelFilesToDelete) {}

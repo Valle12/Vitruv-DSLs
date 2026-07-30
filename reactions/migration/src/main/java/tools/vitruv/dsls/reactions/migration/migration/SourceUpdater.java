@@ -13,28 +13,19 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.emf.common.util.BasicMonitor;
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.compare.Comparison;
-import org.eclipse.emf.compare.EMFCompare;
-import org.eclipse.emf.compare.match.impl.MatchEngineFactoryImpl;
-import org.eclipse.emf.compare.match.impl.MatchEngineFactoryRegistryImpl;
-import org.eclipse.emf.compare.merge.BatchMerger;
-import org.eclipse.emf.compare.merge.IMerger;
-import org.eclipse.emf.compare.scope.DefaultComparisonScope;
 import org.eclipse.emf.compare.utils.UseIdentifiers;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 import tools.vitruv.dsls.reactions.migration.interaction.DetectingUserInteraction;
+import tools.vitruv.dsls.reactions.migration.preservation.ModelFiles;
 import tools.vitruv.dsls.reactions.migration.spec.SpecificationSource;
 import tools.vitruv.dsls.reactions.migration.vsum.ModelSnapshot;
 import tools.vitruv.dsls.reactions.migration.vsum.ScratchArea;
@@ -47,8 +38,6 @@ import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 @Slf4j
 @RequiredArgsConstructor
 class SourceUpdater {
-  private static final Set<String> METADATA_EXTENSIONS =
-      Set.of("uuid", "models", "correspondence", "marker_vitruv");
   private final SpecificationSource specifications;
   private final AdapterRegistry adapters;
   private final InteractionResultProvider interactionFallback;
@@ -56,16 +45,7 @@ class SourceUpdater {
   private final ModelStateDiff diff =
       new ModelStateDiff(new DefaultStateBasedChangeResolutionStrategy(UseIdentifiers.NEVER));
 
-  private static void mergeStateInto(Resource liveState, Resource desiredState) {
-    var matchEngineRegistry = MatchEngineFactoryRegistryImpl.createStandaloneInstance();
-    matchEngineRegistry.add(new MatchEngineFactoryImpl(UseIdentifiers.WHEN_AVAILABLE));
-    EMFCompare emfCompare =
-        EMFCompare.builder().setMatchEngineFactoryRegistry(matchEngineRegistry).build();
-    Comparison comparison =
-        emfCompare.compare(new DefaultComparisonScope(desiredState, liveState, null));
-    new BatchMerger(IMerger.RegistryImpl.createStandaloneInstance())
-        .copyAllLeftToRight(comparison.getDifferences(), new BasicMonitor());
-  }
+  private final List<String> retracted = new ArrayList<>();
 
   @SuppressWarnings("UnstableApiUsage")
   private static void registerRootsAt(
@@ -82,22 +62,17 @@ class SourceUpdater {
     return URI.createFileURI(vsumBase.resolve(filesBase.relativize(file).toString()).toString());
   }
 
-  private static List<Path> oldDerivedModelFiles(Path derivedOriginalsFolder) {
-    if (!Files.isDirectory(derivedOriginalsFolder)) {
-      return List.of();
-    }
-
-    try (Stream<Path> paths = Files.walk(derivedOriginalsFolder)) {
-      return paths.filter(Files::isRegularFile).sorted().toList();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
   private static boolean ownedByDerivedNode(Resource resource, List<MetamodelNode> derivedNodes) {
     return resource.getContents().stream()
         .map(root -> root.eClass().getEPackage().getNsURI())
         .anyMatch(nsUri -> derivedNodes.stream().anyMatch(node -> node.owns(nsUri)));
+  }
+
+  private static List<Resource> sourceOwned(
+      List<Resource> resources, List<MetamodelNode> derivedNodes) {
+    return resources.stream()
+        .filter(resource -> !ownedByDerivedNode(resource, derivedNodes))
+        .toList();
   }
 
   private static boolean scratchStateMatchesMetamodels(
@@ -142,10 +117,11 @@ class SourceUpdater {
     }
   }
 
-  private static String fileExtension(Path path) {
-    String name = path.getFileName().toString();
-    int dot = name.lastIndexOf('.');
-    return dot < 0 ? "" : name.substring(dot + 1);
+  private static CommittableView committableView(View view, boolean recordChanges) {
+    return recordChanges
+        ? view.withChangeRecordingTrait()
+        : view.withChangeDerivingTrait(
+            new DefaultStateBasedChangeResolutionStrategy(UseIdentifiers.NEVER));
   }
 
   SourceUpdateOutcome update(
@@ -153,11 +129,13 @@ class SourceUpdater {
       InternalVirtualModel realVsum,
       PreparedMigration prepared,
       ScratchArea scratch) {
-    if (oldDerivedModelFiles(prepared.derivedOriginalsFolder()).isEmpty()) {
+    retracted.clear();
+    if (prepared.oldDerivedFiles().isEmpty()) {
       log.info("No original derived models to feed back; the forward re-derivation is final.");
       return SourceUpdateOutcome.skipped();
     }
 
+    List<MetamodelNode> derivedNodes = prepared.plan().derived();
     long previousDelta = Long.MAX_VALUE;
     for (int round = 1; round <= maxRounds; round++) {
       Path scratchFolder = scratch.newFolder("source-update-" + round);
@@ -169,31 +147,35 @@ class SourceUpdater {
                 + " forward re-derivation.",
             e.toString());
         return new SourceUpdateOutcome(
-            true, round - 1, false, previousDelta == Long.MAX_VALUE ? -1 : previousDelta);
+            true,
+            round - 1,
+            false,
+            previousDelta == Long.MAX_VALUE ? -1 : previousDelta,
+            List.copyOf(retracted));
       }
 
-      List<Resource> scratchState = loadModelStateRebasedTo(scratchFolder, realFolder);
-      List<Resource> realState = loadModelState(realFolder);
-      long delta = diff.changeCount(realState, scratchState);
+      List<Resource> scratchState =
+          sourceOwned(loadModelStateRebasedTo(scratchFolder, realFolder), derivedNodes);
+      List<Resource> realState = sourceOwned(loadModelState(realFolder), derivedNodes);
+      long delta = SourceStateMerge.count(realState, scratchState).total();
       Optional<SourceUpdateOutcome> finished =
           roundOutcome(round, delta, previousDelta, scratchState, realState);
       if (finished.isPresent()) {
         return finished.get();
       }
 
-      commitFilesOntoVsum(
+      commitResourcesOntoVsum(
           realVsum,
-          modelFiles(scratchFolder),
-          scratchFolder,
+          scratchState,
           realFolder,
-          resource -> ownedByDerivedNode(resource, prepared.plan().derived()),
-          "application of the counter-propagated state");
+          realFolder,
+          "application of the counter-propagated source state");
       previousDelta = delta;
     }
 
     log.warn(
         "Source update stopped after the maximum of {} round(s) without converging.", maxRounds);
-    return new SourceUpdateOutcome(true, maxRounds, false, previousDelta);
+    return new SourceUpdateOutcome(true, maxRounds, false, previousDelta, List.copyOf(retracted));
   }
 
   private Optional<SourceUpdateOutcome> roundOutcome(
@@ -209,7 +191,7 @@ class SourceUpdater {
     }
 
     if (delta == 0) {
-      return Optional.of(new SourceUpdateOutcome(true, round - 1, true, 0));
+      return Optional.of(new SourceUpdateOutcome(true, round - 1, true, 0, List.copyOf(retracted)));
     }
 
     if (delta >= previousDelta) {
@@ -218,14 +200,16 @@ class SourceUpdater {
               + " applied state.",
           delta,
           previousDelta);
-      return Optional.of(new SourceUpdateOutcome(true, round - 1, false, delta));
+      return Optional.of(
+          new SourceUpdateOutcome(true, round - 1, false, delta, List.copyOf(retracted)));
     }
 
     if (!scratchStateMatchesMetamodels(scratchState, realState)) {
       log.warn(
           "The counter-propagated state lost or gained metamodels; keeping the forward"
               + " re-derivation.");
-      return Optional.of(new SourceUpdateOutcome(true, round - 1, false, delta));
+      return Optional.of(
+          new SourceUpdateOutcome(true, round - 1, false, delta, List.copyOf(retracted)));
     }
 
     return Optional.empty();
@@ -236,9 +220,9 @@ class SourceUpdater {
       InternalVirtualModel realVsum,
       PreparedMigration prepared,
       Path scratchFolder) {
-    List<URI> mirrorUris = nonDerivedFileUris(realVsum, prepared.plan().derived());
+    List<URI> mirrorUris = nonDerivedFileUris(realVsum, prepared.plan().derived(), realFolder);
     ModelSnapshot mirror =
-        ModelSnapshot.of(mirrorUris, adapters).relocatedTo(scratchFolder, realFolder);
+        ModelSnapshot.of(mirrorUris, adapters, realFolder).relocatedTo(scratchFolder, realFolder);
     InternalVirtualModel scratchVsum =
         Vsums.build(
             scratchFolder,
@@ -248,11 +232,10 @@ class SourceUpdater {
       new Replayer(adapters).replayInto(scratchVsum, mirror);
       commitFilesOntoVsum(
           scratchVsum,
-          oldDerivedModelFiles(prepared.derivedOriginalsFolder()),
-          prepared.derivedOriginalsFolder(),
+          prepared.oldDerivedFiles(),
+          prepared.preMigrationFolder(),
           scratchFolder,
-          resource -> true,
-          "backflow of the old derived state");
+          resource -> true);
     } finally {
       scratchVsum.dispose();
     }
@@ -263,18 +246,29 @@ class SourceUpdater {
       List<Path> files,
       Path filesBase,
       Path vsumBase,
-      Predicate<Resource> include,
+      Predicate<Resource> include) {
+    ResourceSet loadSet = adapters.newResourceSet();
+    List<Resource> included = new ArrayList<>();
+    for (Path file : files) {
+      Resource resource = adapters.load(loadSet, URI.createFileURI(file.toString()));
+      if (include.test(resource)) {
+        included.add(resource);
+      }
+    }
+
+    commitResourcesOntoVsum(
+        vsum, included, filesBase, vsumBase, "backflow of the old derived state");
+  }
+
+  private void commitResourcesOntoVsum(
+      InternalVirtualModel vsum,
+      List<Resource> desiredStates,
+      Path filesBase,
+      Path vsumBase,
       String step) {
-    ResourceSet loadSet = newModelResourceSet();
     List<Resource> plainResources = new ArrayList<>();
     List<Resource> recordingResources = new ArrayList<>();
-    for (Path file : files) {
-      Resource resource = loadSet.getResource(URI.createFileURI(file.toString()), true);
-      adapters.adapterFor(resource).normalizeLoadedResource(resource);
-      if (!include.test(resource)) {
-        continue;
-      }
-
+    for (Resource resource : desiredStates) {
       if (adapters.adapterFor(resource).requiresChangeRecording()) {
         recordingResources.add(resource);
       } else {
@@ -282,74 +276,37 @@ class SourceUpdater {
       }
     }
 
-    commitViaStateDeriving(vsum, plainResources, filesBase, vsumBase, step);
-    commitViaRecordedMerge(vsum, recordingResources, filesBase, vsumBase, step);
+    commitAdditively(vsum, plainResources, filesBase, vsumBase, step, false);
+    commitAdditively(vsum, recordingResources, filesBase, vsumBase, step, true);
   }
 
-  private void commitViaStateDeriving(
+  private void commitAdditively(
       InternalVirtualModel vsum,
-      List<Resource> resources,
+      List<Resource> desiredStates,
       Path filesBase,
       Path vsumBase,
-      String step) {
-    if (resources.isEmpty()) {
+      String step,
+      boolean recordChanges) {
+    if (desiredStates.isEmpty()) {
       return;
     }
 
-    try (View view =
-        Vsums.openViewOf(
-            vsum,
-            "state-deriving-" + step.hashCode(),
-            root -> !adapters.adapterFor(root).requiresChangeRecording())) {
-      CommittableView committable =
-          view.withChangeDerivingTrait(
-              new DefaultStateBasedChangeResolutionStrategy(UseIdentifiers.NEVER));
+    try (View view = openViewFor(vsum, step, recordChanges)) {
+      CommittableView committable = committableView(view, recordChanges);
       Map<String, Resource> liveByFileName = resourcesByFileName(view);
       ResourceSet viewResourceSet = anyResourceSet(liveByFileName.values());
-      for (Resource resource : resources) {
-        prepareForView(resource, viewResourceSet);
-        List<EObject> nextContent = new ArrayList<>(EcoreUtil.copyAll(resource.getContents()));
-        Resource live = liveByFileName.get(resource.getURI().lastSegment());
+      for (Resource desiredState : desiredStates) {
+        prepareForView(desiredState, viewResourceSet);
+        Resource live = liveByFileName.get(desiredState.getURI().lastSegment());
         if (live != null) {
-          live.getContents().clear();
-          live.getContents().addAll(nextContent);
-        } else if (!nextContent.isEmpty()) {
-          registerRootsAt(committable, nextContent, targetUriFor(resource, filesBase, vsumBase));
-        }
-      }
-
-      commitUnlessNothingChanged(committable, step);
-    } catch (RuntimeException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new IllegalStateException("Closing the view for the " + step + " failed", e);
-    }
-  }
-
-  private void commitViaRecordedMerge(
-      InternalVirtualModel vsum,
-      List<Resource> resources,
-      Path filesBase,
-      Path vsumBase,
-      String step) {
-    if (resources.isEmpty()) {
-      return;
-    }
-
-    try (View view = Vsums.openViewOfAll(vsum, "recorded-merge-" + step.hashCode())) {
-      CommittableView committable = view.withChangeRecordingTrait();
-      Map<String, Resource> liveByFileName = resourcesByFileName(view);
-      ResourceSet viewResourceSet = anyResourceSet(liveByFileName.values());
-      for (Resource resource : resources) {
-        prepareForView(resource, viewResourceSet);
-        Resource live = liveByFileName.get(resource.getURI().lastSegment());
-        if (live != null) {
-          mergeStateInto(live, resource);
-        } else if (!resource.getContents().isEmpty()) {
+          SourceStateMerge.Delta delta = SourceStateMerge.between(live, desiredState);
+          retracted.addAll(delta.describeRetractions());
+          delta.apply();
+        } else if (!desiredState.getContents().isEmpty()) {
           registerRootsAt(
               committable,
-              new ArrayList<>(EcoreUtil.copyAll(resource.getContents())),
-              targetUriFor(resource, filesBase, vsumBase));
+              new ArrayList<>(EcoreUtil.copyAll(desiredState.getContents())),
+              targetUriFor(desiredState, filesBase, vsumBase));
         }
       }
 
@@ -359,16 +316,24 @@ class SourceUpdater {
     } catch (Exception e) {
       throw new IllegalStateException("Closing the view for the " + step + " failed", e);
     }
+  }
+
+  private View openViewFor(InternalVirtualModel vsum, String step, boolean recordChanges) {
+    String name = "additive-merge-" + step.hashCode();
+    return recordChanges
+        ? Vsums.openViewOfAll(vsum, name)
+        : Vsums.openViewOf(
+            vsum, name, root -> !adapters.adapterFor(root).requiresChangeRecording());
   }
 
   private void prepareForView(Resource resource, ResourceSet viewResourceSet) {
     if (viewResourceSet != null) {
-      adapters.adapterFor(resource).prepareForReplayInto(viewResourceSet, resource);
+      adapters.adapterFor(resource).prepareForReplayInto(viewResourceSet, resource.getContents());
     }
   }
 
   private List<URI> nonDerivedFileUris(
-      InternalVirtualModel vsum, List<MetamodelNode> derivedNodes) {
+      InternalVirtualModel vsum, List<MetamodelNode> derivedNodes, Path realFolder) {
     Set<URI> uris = new LinkedHashSet<>();
     try (View view = Vsums.openViewOfAll(vsum, "source-update-mirror")) {
       for (EObject root : view.getRootObjects()) {
@@ -380,7 +345,7 @@ class SourceUpdater {
         URI uri = resource.getURI();
         String nsUri = root.eClass().getEPackage().getNsURI();
         boolean ownedByDerivedNode = derivedNodes.stream().anyMatch(node -> node.owns(nsUri));
-        if (uri.isFile() && !adapters.isPlatformLibraryResource(uri) && !ownedByDerivedNode) {
+        if (adapters.isMigratedModel(uri, realFolder) && !ownedByDerivedNode) {
           uris.add(uri);
         }
       }
@@ -394,8 +359,8 @@ class SourceUpdater {
   }
 
   private List<Resource> loadModelState(Path folder) {
-    ResourceSet resourceSet = newModelResourceSet();
-    return modelFiles(folder).stream()
+    ResourceSet resourceSet = adapters.newResourceSet();
+    return ModelFiles.in(folder, adapters).stream()
         .map(
             file -> {
               Resource resource = resourceSet.getResource(URI.createFileURI(file.toString()), true);
@@ -406,9 +371,9 @@ class SourceUpdater {
   }
 
   private List<Resource> loadModelStateRebasedTo(Path folder, Path uriBaseFolder) {
-    ResourceSet resourceSet = newModelResourceSet();
+    ResourceSet resourceSet = adapters.newResourceSet();
     List<Resource> resources = new ArrayList<>();
-    for (Path file : modelFiles(folder)) {
+    for (Path file : ModelFiles.in(folder, adapters)) {
       URI rebased =
           URI.createFileURI(uriBaseFolder.resolve(folder.relativize(file).toString()).toString());
       Resource resource = resourceSet.createResource(rebased);
@@ -423,29 +388,6 @@ class SourceUpdater {
     }
 
     return resources;
-  }
-
-  private List<Path> modelFiles(Path folder) {
-    Path vsumMetadataFolder = folder.resolve("vsum");
-    Path consistencyMetadataFolder = folder.resolve("consistencymetadata");
-    try (Stream<Path> paths = Files.walk(folder)) {
-      return paths
-          .filter(Files::isRegularFile)
-          .filter(path -> !path.startsWith(vsumMetadataFolder))
-          .filter(path -> !path.startsWith(consistencyMetadataFolder))
-          .filter(path -> !METADATA_EXTENSIONS.contains(fileExtension(path)))
-          .filter(path -> !adapters.isPlatformLibraryResource(URI.createFileURI(path.toString())))
-          .sorted()
-          .toList();
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
-  }
-
-  private ResourceSet newModelResourceSet() {
-    ResourceSet resourceSet = new ResourceSetImpl();
-    resourceSet.getLoadOptions().putAll(adapters.combinedLoadOptions());
-    return resourceSet;
   }
 
   private void logDeltaDetails(List<Resource> realState, List<Resource> scratchState) {

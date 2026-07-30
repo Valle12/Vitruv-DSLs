@@ -1,7 +1,7 @@
 package tools.vitruv.dsls.reactions.migration.migration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static tools.vitruv.dsls.reactions.migration.migration.LibraryCliFixture.permissiveInteraction;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,8 +45,6 @@ import tools.vitruv.dsls.reactions.migration.graph.PropagationGraph;
 import tools.vitruv.dsls.reactions.migration.spec.SpecificationSource;
 import tools.vitruv.dsls.reactions.migration.strategy.DominanceStrategy;
 import tools.vitruv.dsls.reactions.migration.strategy.ExplicitDominance;
-import tools.vitruv.dsls.reactions.migration.strategy.FewestChangesDominance;
-import tools.vitruv.dsls.reactions.migration.strategy.MaxReachabilityDominance;
 import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
 import tools.vitruv.framework.testutils.integration.TestViewFactory;
 import tools.vitruv.framework.views.View;
@@ -74,18 +72,6 @@ class UmlJavaMigrationTest {
     Vsums.prepareStandalone(ADAPTERS);
   }
 
-  private static TestUserInteraction permissiveInteraction() {
-    TestUserInteraction interaction = new TestUserInteraction();
-    interaction.onTextInput(description -> true).always().respondWith("model");
-    interaction
-        .onMultipleChoiceSingleSelection(description -> true)
-        .always()
-        .respondWithChoiceAt(0);
-    interaction.onConfirmation(description -> true).always().respondWith(true);
-    interaction.acknowledgeNotification(description -> true);
-    return interaction;
-  }
-
   private static Set<String> nsUrisOf(List<EObject> roots) {
     return roots.stream()
         .map(root -> root.eClass().getEPackage().getNsURI())
@@ -100,15 +86,6 @@ class UmlJavaMigrationTest {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private static boolean isJdkStandardLibraryFile(Path path) {
-    String normalized = path.toString().replace('\\', '/');
-    return normalized.contains("/java/")
-        || normalized.contains("/javax/")
-        || normalized.contains("/sun/")
-        || normalized.contains("/jdk/")
-        || normalized.contains("/com/sun/");
-  }
-
   @BeforeEach
   void buildSeedVsum() throws IOException {
     JavaSetup.resetClasspathAndRegisterStandardLibrary();
@@ -117,7 +94,7 @@ class UmlJavaMigrationTest {
         Vsums.build(
             sourceFolder,
             SPECS.createSpecifications(),
-            new TestUserInteraction.ResultProvider(permissiveInteraction()));
+            new TestUserInteraction.ResultProvider(permissiveInteraction("model")));
   }
 
   @AfterEach
@@ -137,23 +114,6 @@ class UmlJavaMigrationTest {
     assertTrue(
         seededNsUris.contains(UML_NS_URI), "Java -> UML reactions must create the UML model");
     assertTrue(seededNsUris.stream().anyMatch(nsUri -> nsUri.startsWith(JAVA_NS_URI_PREFIX)));
-  }
-
-  @Test
-  @DisplayName("UML dominant keeps UML and regenerates Java")
-  void test2() throws Exception {
-    seedJavaClass();
-    Set<String> originalUmlClasses = umlClassNames(firstUmlModel(sourceFolder));
-
-    MigrationReport report = migrate(new ExplicitDominance("uml"));
-
-    assertTrue(report.migrated());
-    assertEquals(originalUmlClasses, umlClassNames(firstUmlModel(sourceFolder)));
-    Set<String> nsUris = nsUrisOf(loadAllModelRoots(sourceFolder));
-    assertTrue(nsUris.contains(UML_NS_URI), "the dominant UML must still be present");
-    assertTrue(
-        nsUris.stream().anyMatch(nsUri -> nsUri.startsWith(JAVA_NS_URI_PREFIX)),
-        "the Java model must be regenerated from the dominant UML");
   }
 
   @Test
@@ -200,24 +160,6 @@ class UmlJavaMigrationTest {
   }
 
   @Test
-  @DisplayName("reachability strategy migrates")
-  void test5() throws Exception {
-    seedJavaClass();
-
-    assertTrue(migrate(new MaxReachabilityDominance()).migrated());
-    assertTrue(umlClassNames(firstUmlModel(sourceFolder)).contains(CLASS_NAME));
-  }
-
-  @Test
-  @DisplayName("fewest changes strategy migrates")
-  void test6() throws Exception {
-    seedJavaClass();
-
-    assertTrue(migrate(new FewestChangesDominance()).migrated());
-    assertTrue(umlClassNames(firstUmlModel(sourceFolder)).contains(CLASS_NAME));
-  }
-
-  @Test
   @DisplayName("source update backflow converges for a UML dominant migration")
   void test7() throws Exception {
     seedJavaClass();
@@ -246,7 +188,7 @@ class UmlJavaMigrationTest {
             SPECS,
             new PropagationGraph(SPECS.createSpecifications()),
             strategy,
-            new TestUserInteraction.ResultProvider(permissiveInteraction()),
+            new TestUserInteraction.ResultProvider(permissiveInteraction("model")),
             ADAPTERS,
             settings)
         .run(sourceFolder);
@@ -282,7 +224,7 @@ class UmlJavaMigrationTest {
     viewFactory.changeViewRecordingChanges(
         javaView,
         committable -> {
-          rootsByUri.forEach((uri, roots) -> committable.registerRoot(roots.get(0), uri));
+          rootsByUri.forEach((uri, roots) -> committable.registerRoot(roots.getFirst(), uri));
           detached.reattach();
         });
   }
@@ -315,7 +257,7 @@ class UmlJavaMigrationTest {
     try (var walk = Files.walk(folder)) {
       walk.filter(Files::isRegularFile)
           .filter(path -> path.getFileName().toString().endsWith(extension))
-          .filter(path -> !isJdkStandardLibraryFile(path))
+          .filter(path -> ModelStructure.isOutsideJdkStandardLibrary(folder, path))
           .forEach(
               path -> {
                 Resource resource =

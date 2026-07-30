@@ -69,7 +69,7 @@ class ReplayerTest {
             new ResourceSetImpl()
                 .getResource(URI.createFileURI(pcmFile.toString()), true)
                 .getContents()
-                .get(0);
+                .getFirst();
     assertEquals("shop", repository.getName());
     assertEquals(
         List.of("Order"), repository.getComponents().stream().map(PNamedElement::getName).toList());
@@ -77,7 +77,7 @@ class ReplayerTest {
         List.of("Api"), repository.getInterfaces().stream().map(PInterface::getName).toList());
     assertEquals(
         List.of("get"),
-        repository.getInterfaces().get(0).getMethods().stream()
+        repository.getInterfaces().getFirst().getMethods().stream()
             .map(PNamedElement::getName)
             .toList());
   }
@@ -93,7 +93,8 @@ class ReplayerTest {
 
     Path replayFolder = Files.createDirectories(tempDir.resolve("replay"));
     ModelSnapshot snapshot =
-        ModelSnapshot.of(List.of(umlUri), ADAPTERS).relocatedTo(replayFolder, originalFolder);
+        ModelSnapshot.of(List.of(umlUri), ADAPTERS, originalFolder)
+            .relocatedTo(replayFolder, originalFolder);
     InternalVirtualModel freshVsum =
         Vsums.build(replayFolder, mockupSpecs(), new DetectingUserInteraction());
     try {

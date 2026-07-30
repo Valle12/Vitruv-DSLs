@@ -22,6 +22,7 @@ import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.graph.PropagationGraph;
 import tools.vitruv.dsls.reactions.migration.interaction.DetectingUserInteraction;
+import tools.vitruv.dsls.reactions.migration.preservation.PreservationPolicy;
 import tools.vitruv.dsls.reactions.migration.spec.SpecificationSource;
 import tools.vitruv.dsls.reactions.migration.strategy.ExplicitDominance;
 import tools.vitruv.dsls.reactions.migration.testspecs.UmlPcmMockupSpecifications;
@@ -84,24 +85,49 @@ class SourceUpdateMigrationTest {
     assertTrue(report.sourceUpdate().attempted());
     assertTrue(report.sourceUpdate().converged(), "the backflow must reach a fixed point");
     assertTrue(report.sourceUpdate().rounds() >= 1, "one round must have been applied");
+    assertEquals(
+        List.of("prepare", "re-derive", "source-update", "preserve"),
+        report.statistics().phaseNames());
     assertEquals(Set.of("Order", "LegacyBilling"), umlClassNames(folder));
     assertEquals(Set.of("Order", "LegacyBilling"), pcmComponentNames(folder));
   }
 
   @Test
-  @DisplayName("forward-only migration drops derived-only information")
+  @DisplayName("forward-only migration without preservation drops derived-only information")
   void test2() throws Exception {
+    Path folder = seedOldWorldWithPcmOnlyComponent();
+
+    MigrationReport report =
+        migrate(folder, MigrationSettings.forwardOnly().withPreservation(PreservationPolicy.OFF));
+
+    assertTrue(report.migrated());
+    assertFalse(report.sourceUpdate().attempted());
+    assertFalse(report.preservation().attempted());
+    assertEquals(Set.of("Order"), umlClassNames(folder));
+    assertEquals(
+        Set.of("Order"),
+        pcmComponentNames(folder),
+        "without source update the regenerated pcm reflects only the dominant uml");
+  }
+
+  @Test
+  @DisplayName("forward-only migration re-attaches derived-only information no rule produced")
+  void test5() throws Exception {
     Path folder = seedOldWorldWithPcmOnlyComponent();
 
     MigrationReport report = migrate(folder, MigrationSettings.forwardOnly());
 
     assertTrue(report.migrated());
     assertFalse(report.sourceUpdate().attempted());
-    assertEquals(Set.of("Order"), umlClassNames(folder));
+    assertTrue(report.preservation().applied());
     assertEquals(
-        Set.of("Order"),
+        Set.of("Order", "LegacyBilling"),
         pcmComponentNames(folder),
-        "without source update the regenerated pcm reflects only the dominant uml");
+        "the hand-written component has no correspondence and must survive the re-derivation");
+    assertEquals(
+        Set.of("Order", "LegacyBilling"),
+        umlClassNames(folder),
+        "committing it through the view lets the backward reactions lift it into the source");
   }
 
   @Test

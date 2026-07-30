@@ -1,0 +1,8 @@
+package tools.vitruv.dsls.reactions.migration.migration;
+
+class ConfigMatrixFrom6Test extends ConfigMatrixCells {
+  @Override
+  protected int sourceConfiguration() {
+    return 6;
+  }
+}

@@ -27,7 +27,7 @@ public final class VsumBackup {
     return new VsumBackup(folder, backupFolder);
   }
 
-  private static void copyTree(Path source, Path target) throws IOException {
+  public static void copyTree(Path source, Path target) throws IOException {
     try (Stream<Path> paths = Files.walk(source)) {
       for (Path path : (Iterable<Path>) paths::iterator) {
         Path destination = target.resolve(source.relativize(path).toString());

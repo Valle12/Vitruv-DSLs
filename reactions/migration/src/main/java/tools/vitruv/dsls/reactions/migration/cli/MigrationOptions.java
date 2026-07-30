@@ -2,7 +2,11 @@ package tools.vitruv.dsls.reactions.migration.cli;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import tools.vitruv.dsls.reactions.migration.migration.MigrationMode;
+import tools.vitruv.dsls.reactions.migration.preservation.PreservationPolicy;
 import tools.vitruv.dsls.reactions.migration.strategy.StrategyChoice;
 
 public record MigrationOptions(
@@ -12,10 +16,14 @@ public record MigrationOptions(
     Optional<String> dominantToken,
     SourceUpdateMode sourceUpdate,
     int maxSourceUpdateRounds,
-    boolean backup) {
+    boolean backup,
+    MigrationMode mode,
+    PreservationPolicy preservation,
+    AskMode ask) {
 
   public static final SourceUpdateMode DEFAULT_SOURCE_UPDATE = SourceUpdateMode.FIXPOINT;
   public static final int DEFAULT_MAX_ROUNDS = 3;
+  public static final MigrationMode DEFAULT_MODE = MigrationMode.ID_DIFF;
 
   public static MigrationOptions parse(CommandLine commandLine) {
     Path vsumFolder = requiredExistingFolder(commandLine);
@@ -36,7 +44,10 @@ public record MigrationOptions(
         dominantToken,
         parseSourceUpdate(commandLine),
         parseMaxRounds(commandLine),
-        commandLine.flag(CommandLine.BACKUP, CommandLine.BACKUP_SHORT));
+        commandLine.flag(CommandLine.BACKUP, CommandLine.BACKUP_SHORT),
+        parseMode(commandLine),
+        parsePreservation(commandLine),
+        parseAsk(commandLine));
   }
 
   private static Path requiredExistingFolder(CommandLine commandLine) {
@@ -68,36 +79,88 @@ public record MigrationOptions(
                         .formatted(CommandLine.PROPAGATIONS, CommandLine.PROPAGATIONS_SHORT)));
   }
 
-  private static StrategyChoice parseStrategy(CommandLine commandLine) {
-    return commandLine
-        .value(CommandLine.STRATEGY, CommandLine.STRATEGY_SHORT)
-        .map(MigrationOptions::strategyFromToken)
-        .orElse(StrategyChoice.EXPLICIT);
+  private static <E> E choice(
+      CommandLine commandLine,
+      String option,
+      String what,
+      Function<String, Optional<E>> fromToken,
+      List<String> tokens,
+      E fallback) {
+    return choice(commandLine, option, option, what, fromToken, tokens, fallback);
   }
 
-  private static StrategyChoice strategyFromToken(String token) {
-    return StrategyChoice.fromToken(token)
-        .orElseThrow(
-            () ->
-                new UsageException(
-                    "Unknown strategy '%s'. Use one of: explicit, reachability, derivationLoss"
-                        .formatted(token)));
+  private static <E> E choice(
+      CommandLine commandLine,
+      String longOption,
+      String shortOption,
+      String what,
+      Function<String, Optional<E>> fromToken,
+      List<String> tokens,
+      E fallback) {
+    return commandLine
+        .value(longOption, shortOption)
+        .map(
+            token ->
+                fromToken
+                    .apply(token)
+                    .orElseThrow(
+                        () ->
+                            new UsageException(
+                                "Unknown %s '%s'. Use one of: %s"
+                                    .formatted(what, token, String.join(", ", tokens)))))
+        .orElse(fallback);
+  }
+
+  private static StrategyChoice parseStrategy(CommandLine commandLine) {
+    return choice(
+        commandLine,
+        CommandLine.STRATEGY,
+        CommandLine.STRATEGY_SHORT,
+        "strategy",
+        StrategyChoice::fromToken,
+        StrategyChoice.TOKENS,
+        StrategyChoice.EXPLICIT);
+  }
+
+  private static MigrationMode parseMode(CommandLine commandLine) {
+    return choice(
+        commandLine,
+        CommandLine.MODE,
+        "migration mode",
+        MigrationMode::fromToken,
+        MigrationMode.TOKENS,
+        DEFAULT_MODE);
+  }
+
+  private static PreservationPolicy parsePreservation(CommandLine commandLine) {
+    return choice(
+        commandLine,
+        CommandLine.PRESERVE,
+        "preservation policy",
+        PreservationPolicy::fromToken,
+        PreservationPolicy.TOKENS,
+        PreservationPolicy.USER);
+  }
+
+  private static AskMode parseAsk(CommandLine commandLine) {
+    return choice(
+        commandLine,
+        CommandLine.ASK,
+        "value for " + CommandLine.ASK,
+        AskMode::fromToken,
+        AskMode.TOKENS,
+        AskMode.AUTO);
   }
 
   private static SourceUpdateMode parseSourceUpdate(CommandLine commandLine) {
-    return commandLine
-        .value(CommandLine.SOURCE_UPDATE, CommandLine.SOURCE_UPDATE_SHORT)
-        .map(MigrationOptions::sourceUpdateFromToken)
-        .orElse(DEFAULT_SOURCE_UPDATE);
-  }
-
-  private static SourceUpdateMode sourceUpdateFromToken(String token) {
-    return SourceUpdateMode.fromToken(token)
-        .orElseThrow(
-            () ->
-                new UsageException(
-                    "Unknown source-update mode '%s'. Use one of: none, fixpoint"
-                        .formatted(token)));
+    return choice(
+        commandLine,
+        CommandLine.SOURCE_UPDATE,
+        CommandLine.SOURCE_UPDATE_SHORT,
+        "source-update mode",
+        SourceUpdateMode::fromToken,
+        SourceUpdateMode.TOKENS,
+        DEFAULT_SOURCE_UPDATE);
   }
 
   private static int parseMaxRounds(CommandLine commandLine) {

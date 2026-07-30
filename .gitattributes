@@ -5,3 +5,8 @@
 # WSL/Linux/macOS); the Windows batch wrapper must stay CRLF.
 mvnw     text eol=lf
 mvnw.cmd text eol=crlf
+
+.github/prepare-release                        text eol=lf
+reactions/migration/build-propagation-jars     text eol=lf
+reactions/migration/generate-config-matrix     text eol=lf
+reactions/preprocessor/preprocess-configs      text eol=lf

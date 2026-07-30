@@ -17,7 +17,12 @@ import static extension tools.vitruv.dsls.reactions.util.ReactionsLanguageUtil.g
 import java.util.Map
 import java.util.Set
 import tools.vitruv.change.propagation.ConsistencyRuleId
+import tools.vitruv.change.propagation.ConsistencyRuleTrigger
+import tools.vitruv.change.propagation.ConsistencyRuleTrigger.ValueSlot
 import tools.vitruv.dsls.reactions.codegen.helper.ConsistencyRuleHashCalculator
+import tools.vitruv.dsls.reactions.codegen.helper.ConsistencyRuleTriggerCalculator
+
+import static extension tools.vitruv.dsls.reactions.codegen.changetyperepresentation.ChangeTypeRepresentationExtractor.*
 import tools.vitruv.change.composite.MetamodelDescriptor
 import tools.vitruv.dsls.reactions.runtime.structure.ReactionsImportPath
 import static com.google.common.base.Preconditions.checkState
@@ -90,6 +95,21 @@ class ChangePropagationSpecificationClassGenerator extends ClassGenerator {
 					return «Map».ofEntries(«
 					»«FOR reaction : reactionsSegment.includedReactions.keySet.filter[isReferenceable] SEPARATOR ','»
 						«Map».entry(new «ConsistencyRuleId»("«reaction.qualifiedName»"), "«hashCalculator.computeRuleHash(reaction)»")«
+					»«ENDFOR»);
+				'''
+			]
+
+			// expose the trigger descriptor of each registered reaction (rule), computed at code generation time:
+			members += reactionsSegment.toMethod("getConsistencyRuleTriggers",
+				typeRef(Map, typeRef(ConsistencyRuleId), typeRef(ConsistencyRuleTrigger))) [
+				visibility = JvmVisibility.PUBLIC
+				body = '''
+					return «Map».ofEntries(«
+					»«FOR reaction : reactionsSegment.includedReactions.keySet.filter[isReferenceable] SEPARATOR ','»
+						«val trigger = ConsistencyRuleTriggerCalculator.computeTrigger(reaction.trigger.extractChangeType)»
+						«Map».entry(new «ConsistencyRuleId»("«reaction.qualifiedName»"), new «ConsistencyRuleTrigger»(«
+						»"«trigger.changeType»", "«trigger.affectedType»", "«trigger.affectedFeature»", "«trigger.valueType»", «
+						»«ValueSlot».«trigger.valueSlot.name»))«
 					»«ENDFOR»);
 				'''
 			]

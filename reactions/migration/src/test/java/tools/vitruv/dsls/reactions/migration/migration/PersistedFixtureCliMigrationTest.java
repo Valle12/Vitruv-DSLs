@@ -3,33 +3,27 @@ package tools.vitruv.dsls.reactions.migration.migration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static tools.vitruv.dsls.reactions.migration.migration.LibraryCliFixture.assertVsumReloadsWithJarSpecs;
+import static tools.vitruv.dsls.reactions.migration.migration.LibraryCliFixture.runCli;
+import static tools.vitruv.dsls.reactions.migration.migration.LibraryCliFixture.writeMethodBody;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.uml2.uml.Model;
-import org.eclipse.uml2.uml.NamedElement;
-import org.junit.jupiter.api.Assumptions;
+import java.util.Map;
+import java.util.TreeMap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import tools.vitruv.applications.umljava.UmlToJavaChangePropagationSpecification;
 import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
-import tools.vitruv.dsls.reactions.migration.Main;
+import tools.vitruv.dsls.reactions.migration.PropagationJars;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
-import tools.vitruv.dsls.reactions.migration.interaction.DetectingUserInteraction;
-import tools.vitruv.dsls.reactions.migration.spec.JarSpecificationSource;
+import tools.vitruv.dsls.reactions.migration.vsum.PersistedRules;
 import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
-import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
 @ExtendWith(RegisterMetamodelsInStandalone.class)
 class PersistedFixtureCliMigrationTest {
@@ -42,105 +36,97 @@ class PersistedFixtureCliMigrationTest {
     Vsums.prepareStandalone(ADAPTERS);
   }
 
-  private static void assertShopModelsAreIntact(Path vsumFolder) throws Exception {
-    Path umlFile = vsumFolder.resolve("model").resolve("model.uml");
-    assertTrue(Files.exists(umlFile), "the dominant UML model must exist");
-    ResourceSet resourceSet = new ResourceSetImpl();
-    resourceSet.getLoadOptions().putAll(ADAPTERS.combinedLoadOptions());
-    Resource umlResource = resourceSet.getResource(URI.createFileURI(umlFile.toString()), true);
-    assertTrue(umlResource.getErrors().isEmpty());
-    Model model =
-        umlResource.getContents().stream()
-            .filter(Model.class::isInstance)
-            .map(Model.class::cast)
-            .findFirst()
-            .orElseThrow();
-    Set<String> classifierNames =
-        model.getPackagedElements().stream()
-            .filter(org.eclipse.uml2.uml.Classifier.class::isInstance)
-            .map(NamedElement::getName)
-            .collect(Collectors.toSet());
+  private static void assertLibraryModelsAreIntact(Path vsumFolder) throws Exception {
+    assertTrue(
+        Files.exists(vsumFolder.resolve("model").resolve("library.uml")),
+        "the dominant UML model must exist");
+    Map<String, String> uml = ModelStructure.ofUml(vsumFolder, ADAPTERS);
+    Map<String, String> java = ModelStructure.ofJava(vsumFolder, ADAPTERS);
     for (String expected :
-        List.of("Identifiable", "OrderStatus", "Customer", "PremiumCustomer", "Order")) {
-      assertTrue(classifierNames.contains(expected), "UML must contain " + expected);
-    }
-
-    try (var javaFiles = Files.walk(vsumFolder.resolve("src"))) {
-      assertFalse(
-          javaFiles.filter(path -> path.toString().endsWith(".java")).toList().isEmpty(),
-          "the Java side must be regenerated");
-    }
-  }
-
-  private static void assertVsumReloadsWithJarSpecs(Path vsumFolder, Path umljavaJar)
-      throws Exception {
-    InternalVirtualModel reloaded =
-        Vsums.build(
-            vsumFolder,
-            JarSpecificationSource.fromJar(umljavaJar).createSpecifications(),
-            new DetectingUserInteraction());
-    try {
-      assertFalse(Vsums.readRoots(reloaded).isEmpty(), "the migrated VSUM must reload");
-    } finally {
-      reloaded.dispose();
+        List.of(
+            LibraryExampleModel.IDENTIFIABLE,
+            LibraryExampleModel.BORROWABLE,
+            LibraryExampleModel.MEDIA_TYPE,
+            LibraryExampleModel.ISBN,
+            LibraryExampleModel.MEDIA,
+            LibraryExampleModel.BOOK,
+            LibraryExampleModel.LIBRARY_CARD,
+            LibraryExampleModel.MEMBER)) {
+      assertTrue(
+          uml.containsKey(expected), "UML must contain " + expected + ", got " + uml.keySet());
+      assertTrue(
+          java.containsKey(expected),
+          "the Java side must be regenerated for " + expected + ", got " + java.keySet());
     }
   }
 
-  private static Path jarContaining() throws Exception {
-    return Path.of(
-        UmlToJavaChangePropagationSpecification.class
-            .getProtectionDomain()
-            .getCodeSource()
-            .getLocation()
-            .toURI());
+  private static void assertMethodBodySurvived(Path vsumFolder) throws IOException {
+    assertEquals(
+        1,
+        LibraryUserContent.statementCount(
+            vsumFolder, ADAPTERS, LibraryExampleModel.BOOK, LibraryUserContent.BODIED_METHOD),
+        "the hand-written method body must survive the migration");
+    assertEquals(
+        LibraryUserContent.COMPUTED_METHOD_STATEMENTS,
+        LibraryUserContent.statementCount(
+            vsumFolder, ADAPTERS, LibraryExampleModel.MEMBER, LibraryUserContent.COMPUTED_METHOD),
+        "totalWeight is not a program without its body, so the migration must keep it");
+  }
+
+  private static Map<String, String> modelDigests(Path vsumFolder) throws Exception {
+    Map<String, String> digests = new TreeMap<>();
+    MessageDigest sha = MessageDigest.getInstance("SHA-256");
+    for (String extension : List.of(".uml", ".java")) {
+      for (Path file : ModelStructure.modelFiles(vsumFolder, extension)) {
+        digests.put(
+            vsumFolder.relativize(file).toString().replace('\\', '/'),
+            java.util.HexFormat.of().formatHex(sha.digest(Files.readAllBytes(file))));
+      }
+    }
+
+    return digests;
   }
 
   @Test
-  @DisplayName("CLI migrates the committed persisted shop VSUM in place")
+  @DisplayName("CLI migrates the committed persisted library VSUM in place")
   void test1() throws Exception {
-    Path umljavaJar = jarContaining();
-    Assumptions.assumeTrue(
-        umljavaJar.toString().endsWith(".jar"), "umljava must be packaged as a jar to scan");
+    Path umljavaJar = PropagationJars.config1();
     Path vsumFolder = materializedFixture();
+    writeMethodBody(vsumFolder);
 
-    int exitCode =
-        Main.run(
-            new String[] {
-              "--model",
-              vsumFolder.toString(),
-              "--propagations",
-              umljavaJar.toString(),
-              "--dominant",
-              "uml",
-              "--backup"
-            });
+    assertEquals(0, runCli(vsumFolder, umljavaJar, "--mode", "full", "--backup"));
 
-    assertEquals(0, exitCode, "the CLI migration must succeed");
-    assertShopModelsAreIntact(vsumFolder);
+    assertLibraryModelsAreIntact(vsumFolder);
+    assertMethodBodySurvived(vsumFolder);
     assertVsumReloadsWithJarSpecs(vsumFolder, umljavaJar);
 
-    int secondRun =
-        Main.run(
-            new String[] {
-              "--model", vsumFolder.toString(),
-              "--propagations", umljavaJar.toString(),
-              "--dominant", "uml"
-            });
-    assertEquals(0, secondRun, "a second migration of the migrated VSUM must also succeed");
-    assertShopModelsAreIntact(vsumFolder);
+    assertEquals(
+        0,
+        runCli(vsumFolder, umljavaJar),
+        "the migrated VSUM must still be migratable without changes");
+    assertLibraryModelsAreIntact(vsumFolder);
+    assertMethodBodySurvived(vsumFolder);
+  }
+
+  @Test
+  @DisplayName("the default selective run finds the fixture's registry clean and changes nothing")
+  void test2() throws Exception {
+    Path umljavaJar = PropagationJars.config1();
+    Path vsumFolder = materializedFixture();
+    writeMethodBody(vsumFolder);
+    assertFalse(
+        PersistedRules.load(vsumFolder).hashes().isEmpty(),
+        "the fixture must carry the registry the jar published");
+    Map<String, String> before = modelDigests(vsumFolder);
+
+    assertEquals(0, runCli(vsumFolder, umljavaJar));
+
+    assertEquals(
+        before, modelDigests(vsumFolder), "an unchanged rule set must repropagate nothing");
+    assertMethodBodySurvived(vsumFolder);
   }
 
   private Path materializedFixture() throws Exception {
-    Path fixture =
-        Path.of(
-            Objects.requireNonNull(getClass().getResource(ShopVsumFixtureGenerator.RESOURCE_PATH))
-                .toURI());
-    Path vsumFolder = tempDir.resolve("shop-vsum");
-    ShopVsumFixtureGenerator.copyTreeReplacing(
-        fixture,
-        vsumFolder,
-        ShopVsumFixtureGenerator.SENTINEL,
-        URI.createFileURI(vsumFolder.toAbsolutePath().toString()).toString());
-    return vsumFolder;
+    return LibraryVsumFixtureGenerator.materializeInto(tempDir);
   }
 }

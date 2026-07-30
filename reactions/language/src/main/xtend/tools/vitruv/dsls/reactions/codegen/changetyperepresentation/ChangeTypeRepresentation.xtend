@@ -1,5 +1,6 @@
 package tools.vitruv.dsls.reactions.codegen.changetyperepresentation
 
+import org.eclipse.emf.ecore.EClassifier
 import org.eclipse.emf.ecore.EStructuralFeature
 import org.eclipse.xtend.lib.annotations.Accessors
 import org.eclipse.xtend2.lib.StringConcatenationClient
@@ -33,24 +34,33 @@ class ChangeTypeRepresentation {
 		return primitveToWrapperTypesMap.getOrDefault(potentiallyPrimitiveTypeCName, potentiallyPrimitiveTypeCName)
 	}	
 	
+	@Accessors(PUBLIC_GETTER)
 	final Class<?> changeType
 	final String affectedElementClassCanonicalName
 	final String affectedValueClassCanonicalName
+	@Accessors(PUBLIC_GETTER)
+	final EClassifier affectedElementEClassifier
+	@Accessors(PUBLIC_GETTER)
+	final EClassifier affectedValueEClassifier
+	@Accessors(PUBLIC_GETTER)
 	final boolean hasOldValue
+	@Accessors(PUBLIC_GETTER)
 	final boolean hasNewValue
 	final boolean hasIndex
+	@Accessors(PUBLIC_GETTER)
 	final EStructuralFeature affectedFeature
 	@Accessors(PUBLIC_GETTER)
 	final String name
 	final List<String> explicitGenericTypeParameters
-	
+
 	protected new(String name, Class<?> changeType, String affectedElementClassCanonicalName, String affectedValueClassCanonicalName, boolean hasOldValue,
-		boolean hasNewValue, EStructuralFeature affectedFeature, boolean hasIndex) {
-		this(name, changeType, affectedElementClassCanonicalName, affectedValueClassCanonicalName, hasOldValue, hasNewValue, affectedFeature, hasIndex, null)
+		boolean hasNewValue, EStructuralFeature affectedFeature, boolean hasIndex, EClassifier affectedElementEClassifier, EClassifier affectedValueEClassifier) {
+		this(name, changeType, affectedElementClassCanonicalName, affectedValueClassCanonicalName, hasOldValue, hasNewValue, affectedFeature, hasIndex, null, affectedElementEClassifier, affectedValueEClassifier)
 	}
-	
+
 	protected new(String name, Class<?> changeType, String affectedElementClassCanonicalName, String affectedValueClassCanonicalName, boolean hasOldValue,
-		boolean hasNewValue, EStructuralFeature affectedFeature, boolean hasIndex, List<String> explicitGenericTypeParameters) {
+		boolean hasNewValue, EStructuralFeature affectedFeature, boolean hasIndex, List<String> explicitGenericTypeParameters, EClassifier affectedElementEClassifier,
+		EClassifier affectedValueEClassifier) {
 		this.name = name
 		this.changeType = changeType
 		this.affectedElementClassCanonicalName = affectedElementClassCanonicalName.mapToNonPrimitiveType
@@ -60,6 +70,8 @@ class ChangeTypeRepresentation {
 		this.hasNewValue = hasNewValue
 		this.hasIndex = hasIndex
 		this.explicitGenericTypeParameters = explicitGenericTypeParameters
+		this.affectedElementEClassifier = affectedElementEClassifier
+		this.affectedValueEClassifier = affectedValueEClassifier
 	}
 
 	def getAffectedElementClass() {

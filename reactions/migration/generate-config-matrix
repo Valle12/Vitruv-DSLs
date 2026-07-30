@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# Writes the library example migrated from every feature configuration to every
+# other one, into the folder holding the library example figures.
+#
+# Usage:
+#   ./generate-config-matrix <output folder> [options]
+#
+# Options:
+#   --from N        only the cells derived with configN (a row)
+#   --to M          only the cells migrated to configM (a column)
+#   --cell F T      only the one cell, configF migrated to configT
+#   --force         redo cells and baselines that are already there
+#
+# Without a restriction it does all 9 baselines and all 81 cells, and cells that
+# already have a RUN.md are skipped, so an interrupted sweep continues rather than
+# starting over.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPOSITORY="$(cd "$HERE/../.." && pwd)"
+CONFIGS_IN_REPOSITORY="reactions/preprocessor/src/main/resources/configs"
+CONFIGS="$REPOSITORY/$CONFIGS_IN_REPOSITORY"
+PROPAGATIONS="$HERE/src/test/resources/propagations"
+SNAPSHOTS="$HERE/target/matrix-baselines"
+GENERATOR="tools.vitruv.dsls.reactions.migration.migration.ConfigMatrixArtifactGenerator"
+CONFIGURATIONS=9
+
+to_host_path() {
+  if command -v cygpath > /dev/null 2>&1; then
+    cygpath -m "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
+usage() {
+  echo "Usage: $(basename "$0") <output folder> [--from N] [--to M] [--cell F T] [--force]" >&2
+}
+
+if [ "$#" -lt 1 ]; then
+  usage
+  exit 1
+fi
+
+TARGET="$1"
+shift
+
+ROW=""
+COLUMN=""
+CELL_FROM=""
+CELL_TO=""
+FORCE=false
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --from) ROW="${2:-}"; shift 2 ;;
+    --to) COLUMN="${2:-}"; shift 2 ;;
+    --cell) CELL_FROM="${2:-}"; CELL_TO="${3:-}"; shift 3 ;;
+    --force) FORCE=true; shift ;;
+    *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+check_configuration() {
+  case "$1" in
+    [1-9]) ;;
+    *) echo "Not a configuration number: $1. There are 1 to $CONFIGURATIONS." >&2; exit 1 ;;
+  esac
+}
+
+for number in $ROW $COLUMN $CELL_FROM $CELL_TO; do
+  check_configuration "$number"
+done
+if { [ -n "$CELL_FROM" ] && [ -z "$CELL_TO" ]; } || { [ -z "$CELL_FROM" ] && [ -n "$CELL_TO" ]; }; then
+  echo "--cell takes two configuration numbers." >&2
+  exit 1
+fi
+
+if [ ! -d "$TARGET" ]; then
+  echo "The output folder does not exist: $TARGET" >&2
+  exit 1
+fi
+TARGET="$(cd "$TARGET" && pwd)"
+
+# Which cells this invocation is about.
+if [ -n "$CELL_FROM" ]; then
+  FROMS=("$CELL_FROM")
+  TOS=("$CELL_TO")
+else
+  if [ -n "$ROW" ]; then FROMS=("$ROW"); else FROMS=(1 2 3 4 5 6 7 8 9); fi
+  if [ -n "$COLUMN" ]; then TOS=("$COLUMN"); else TOS=(1 2 3 4 5 6 7 8 9); fi
+fi
+
+# A cell needs the baseline it starts from and the one it is read against.
+mapfile -t BASELINES < <(printf '%s\n' "${FROMS[@]}" "${TOS[@]}" | sort -u)
+
+for number in $(seq 1 "$CONFIGURATIONS"); do
+  if [ ! -d "$CONFIGS/config${number}-reactions" ]; then
+    echo "config${number}-reactions is missing; generating it first." >&2
+    "$REPOSITORY/reactions/preprocessor/preprocess-configs" "$number"
+  fi
+  if [ ! -f "$PROPAGATIONS/umljava-config${number}.jar" ]; then
+    echo "umljava-config${number}.jar is missing. Build the jars first:" >&2
+    echo "  reactions/migration/build-propagation-jars" >&2
+    exit 1
+  fi
+done
+
+cd "$REPOSITORY"
+./mvnw -q -B -pl reactions/migration test-compile
+
+generate() {
+  local label="$1"
+  shift
+  echo "=== $label"
+  if ! ./mvnw -q -B -pl reactions/migration \
+      org.codehaus.mojo:exec-maven-plugin:3.6.3:java \
+      -Dexec.mainClass="$GENERATOR" \
+      -Dexec.classpathScope=test \
+      -Dexec.args="\"$(to_host_path "$TARGET")\" \"$CONFIGS_IN_REPOSITORY\" $*"; then
+    echo "The $label step failed; the output folder is incomplete." >&2
+    echo "Fix the failure and run this again - finished cells are skipped." >&2
+    exit 1
+  fi
+}
+
+# The rule sets are only rewritten for a full sweep: a restricted run must not
+# replace the rules the cells already in the folder were generated with. --force
+# throws the previous sweep away first, which is what makes it a fresh one rather
+# than a continuation.
+if [ -z "$ROW" ] && [ -z "$COLUMN" ] && [ -z "$CELL_FROM" ]; then
+  if [ "$FORCE" = true ]; then
+    generate "reset" reset
+  fi
+  generate "rules" rules
+fi
+
+for number in "${BASELINES[@]}"; do
+  if [ "$FORCE" = false ] && [ -d "$SNAPSHOTS/config${number}" ] \
+      && [ -f "$TARGET/runs/baselines/config${number}/RUN.md" ]; then
+    echo "=== baseline $number (already there)"
+    continue
+  fi
+  generate "baseline $number" baseline "$number"
+done
+
+for from in "${FROMS[@]}"; do
+  for to in "${TOS[@]}"; do
+    if [ "$FORCE" = false ] && [ -f "$TARGET/runs/config${from}-to-config${to}/RUN.md" ]; then
+      echo "=== cell $from -> $to (already there)"
+      continue
+    fi
+    generate "cell $from -> $to" cell "$from" "$to"
+  done
+done
+
+generate "index" index
+
+# A restricted run only claims the cells it was asked for; a full one has to have
+# written every cell, or a step failed quietly.
+if [ -z "$ROW" ] && [ -z "$COLUMN" ] && [ -z "$CELL_FROM" ]; then
+  MISSING=0
+  for from in $(seq 1 "$CONFIGURATIONS"); do
+    for to in $(seq 1 "$CONFIGURATIONS"); do
+      if [ ! -f "$TARGET/runs/config${from}-to-config${to}/RUN.md" ]; then
+        echo "Missing: runs/config${from}-to-config${to}" >&2
+        MISSING=$((MISSING + 1))
+      fi
+    done
+  done
+  if [ "$MISSING" -gt 0 ]; then
+    echo "$MISSING cell(s) were not written; the output folder is incomplete." >&2
+    exit 1
+  fi
+fi
+
+echo "Wrote the configuration matrix to $TARGET"

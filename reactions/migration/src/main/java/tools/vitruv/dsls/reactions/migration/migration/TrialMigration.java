@@ -31,7 +31,8 @@ public class TrialMigration {
       List<URI> candidateResourceUris) {
     Path trialFolder = scratch.newFolder("trial");
     ModelSnapshot snapshot =
-        ModelSnapshot.of(candidateResourceUris, adapters).relocatedTo(trialFolder, realFolder);
+        ModelSnapshot.of(candidateResourceUris, adapters, realFolder)
+            .relocatedTo(trialFolder, realFolder);
     InternalVirtualModel trialVsum =
         Vsums.build(
             trialFolder,

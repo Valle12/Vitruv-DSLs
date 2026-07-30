@@ -20,7 +20,7 @@ public class ModelStateDiff {
     this(new DefaultStateBasedChangeResolutionStrategy());
   }
 
-  private static Map<String, Resource> byFileName(Collection<Resource> resources) {
+  static Map<String, Resource> byFileName(Collection<Resource> resources) {
     Map<String, Resource> byName = new LinkedHashMap<>();
     for (Resource resource : resources) {
       String name =

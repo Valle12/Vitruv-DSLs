@@ -30,6 +30,15 @@ class CommandLineTest {
   }
 
   @Test
+  @DisplayName("reads long-only options")
+  void test5() {
+    CommandLine commandLine = new CommandLine(new String[] {"--mode", "ids"});
+
+    assertEquals(Optional.of("ids"), commandLine.value(CommandLine.MODE));
+    assertTrue(new CommandLine(new String[] {}).value(CommandLine.MODE).isEmpty());
+  }
+
+  @Test
   @DisplayName("detects flags and help")
   void test3() {
     CommandLine withFlags = new CommandLine(new String[] {"-b", "--help"});
@@ -44,7 +53,7 @@ class CommandLineTest {
   @Test
   @DisplayName("usage documents every option")
   void test4() {
-    String usage = CommandLine.usage();
+    String usage = CommandLine.USAGE;
 
     for (String option :
         new String[] {
@@ -55,6 +64,9 @@ class CommandLineTest {
           CommandLine.SOURCE_UPDATE,
           CommandLine.MAX_ROUNDS,
           CommandLine.BACKUP,
+          CommandLine.MODE,
+          CommandLine.PRESERVE,
+          CommandLine.ASK,
           CommandLine.HELP
         }) {
       assertTrue(usage.contains(option), "usage must document " + option);

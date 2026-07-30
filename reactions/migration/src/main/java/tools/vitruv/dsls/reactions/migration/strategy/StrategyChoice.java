@@ -9,10 +9,13 @@ public enum StrategyChoice {
   REACHABILITY("reachability"),
   FEWEST_CHANGES("derivationLoss", "fewestChanges");
 
-  private final List<String> tokens;
+  public static final List<String> TOKENS =
+      Arrays.stream(values()).flatMap(choice -> choice.acceptedTokens.stream()).toList();
 
-  StrategyChoice(String... tokens) {
-    this.tokens = List.of(tokens);
+  private final List<String> acceptedTokens;
+
+  StrategyChoice(String... acceptedTokens) {
+    this.acceptedTokens = List.of(acceptedTokens);
   }
 
   public static Optional<StrategyChoice> fromToken(String token) {
@@ -20,6 +23,6 @@ public enum StrategyChoice {
   }
 
   private boolean matches(String token) {
-    return tokens.stream().anyMatch(known -> known.equalsIgnoreCase(token));
+    return acceptedTokens.stream().anyMatch(known -> known.equalsIgnoreCase(token));
   }
 }

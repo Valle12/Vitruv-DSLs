@@ -169,7 +169,7 @@ public abstract class MirroringSpecification extends AbstractChangePropagationSp
     return null;
   }
 
-  private URI mirrorUriFor(String sourceUri) {
+  protected URI mirrorUriFor(String sourceUri) {
     return URI.createURI(sourceUri).trimFileExtension().appendFileExtension(targetFileExtension);
   }
 }

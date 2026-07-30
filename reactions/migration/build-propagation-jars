@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Builds the umljava specification jars this module's tests migrate with, one per
+# feature configuration, into src/test/resources/propagations.
+#
+# Usage:
+#   ./build-propagation-jars          # configs 1..9
+#   ./build-propagation-jars 1 7      # only the listed configs
+#
+# The annotated reactions are compiled from the Vitruv-CaseStudies checkout, which
+# is located the same way reactions/preprocessor/preprocess-configs locates it.
+# Override with VITRUV_CASESTUDIES_HOME.
+#
+# config1 is always built last and with `install`, because it is the copy every
+# other test in this module inherits from the classpath; see the Rules section of
+# src/test/resources/propagations/README.md.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPOSITORY="$(cd "$HERE/../.." && pwd)"
+CONFIGS="$REPOSITORY/reactions/preprocessor/src/main/resources/configs"
+DESTINATION="$HERE/src/test/resources/propagations"
+REACTIONS_RELATIVE_PATH="umljava/src/main/reactions/tools/vitruv/applications/umljava"
+BUILT_JAR="umljava/target/tools.vitruv.applications.umljava-3.1.1-SNAPSHOT.jar"
+
+to_host_path() {
+  if command -v cygpath > /dev/null 2>&1; then
+    cygpath -m "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
+find_casestudies() {
+  local candidate
+  for candidate in \
+      "${VITRUV_CASESTUDIES_HOME:-}" \
+      "$REPOSITORY/../Vitruv-CaseStudies" \
+      "$REPOSITORY/../../Vitruv-CaseStudies" \
+      "$HOME/IdeaProjects/Vitruv-CaseStudies" \
+      "$HOME/projects/Vitruv-CaseStudies"; do
+    [ -n "$candidate" ] || continue
+    if [ -d "$candidate/$REACTIONS_RELATIVE_PATH" ]; then
+      (cd "$candidate" && pwd)
+      return 0
+    fi
+  done
+
+  echo "Could not find the Vitruv-CaseStudies checkout holding $REACTIONS_RELATIVE_PATH." >&2
+  echo "Set VITRUV_CASESTUDIES_HOME to the checkout." >&2
+  return 1
+}
+
+if [ "$#" -gt 0 ]; then
+  REQUESTED=("$@")
+else
+  REQUESTED=(1 2 3 4 5 6 7 8 9)
+fi
+
+# config1 last: it is the one that gets installed, so it has to be what the local
+# repository ends up holding.
+ORDERED=()
+BUILD_CONFIG1=false
+for number in "${REQUESTED[@]}"; do
+  if [ "$number" = "1" ]; then
+    BUILD_CONFIG1=true
+  else
+    ORDERED+=("$number")
+  fi
+done
+if [ "$BUILD_CONFIG1" = true ]; then
+  ORDERED+=(1)
+fi
+
+CASESTUDIES="$(find_casestudies)"
+
+for number in "${ORDERED[@]}"; do
+  if [ ! -d "$CONFIGS/config${number}-reactions" ]; then
+    echo "config${number}-reactions is missing; preprocessing it first." >&2
+    "$REPOSITORY/reactions/preprocessor/preprocess-configs" "$number"
+  fi
+done
+
+mkdir -p "$DESTINATION"
+
+for number in "${ORDERED[@]}"; do
+  # config1 is installed so the rest of the module compiles and runs against it;
+  # every other configuration is only packaged and copied out.
+  if [ "$number" = "1" ]; then
+    goal="install"
+  else
+    goal="package"
+  fi
+
+  echo "=== config${number} ($goal)"
+  # clean is required: the Xtext generator adds to target/generated-sources instead
+  # of replacing it, so a leftover configuration leaves stale routines behind and the
+  # compile fails on facade methods the new configuration no longer declares.
+  (cd "$CASESTUDIES" && ./mvnw -q -B -pl umljava clean "$goal" -DskipTests \
+    -Dumljava.reactions.dir="$(to_host_path "$CONFIGS/config${number}-reactions")")
+
+  # Copy it out before the next build: every configuration writes the same file name
+  # and the next clean deletes it.
+  cp "$CASESTUDIES/$BUILT_JAR" "$DESTINATION/umljava-config${number}.jar"
+done
+
+echo "Wrote $(printf 'umljava-config%s.jar ' "${ORDERED[@]}")to $DESTINATION"

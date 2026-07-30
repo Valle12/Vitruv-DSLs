@@ -2,10 +2,13 @@ package tools.vitruv.dsls.reactions.migration.vsum;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.plugin.EcorePlugin;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -18,9 +21,13 @@ import tools.vitruv.framework.views.ViewProvider;
 import tools.vitruv.framework.views.ViewSelector;
 import tools.vitruv.framework.views.ViewTypeFactory;
 import tools.vitruv.framework.vsum.VirtualModelBuilder;
+import tools.vitruv.framework.vsum.helper.VsumFileSystemLayout;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+@Slf4j
 public final class Vsums {
+  private static final String VSUM_METADATA_FOLDER = "vsum";
+
   private Vsums() {}
 
   public static InternalVirtualModel build(
@@ -38,6 +45,34 @@ public final class Vsums {
     }
   }
 
+  public static void normalizeModelRegistry(Path folder) {
+    if (!Files.isDirectory(folder.resolve(VSUM_METADATA_FOLDER))) {
+      return;
+    }
+
+    try {
+      VsumFileSystemLayout layout = new VsumFileSystemLayout(folder);
+      layout.prepare();
+      Path modelsFile = layout.getModelsNamesFilesPath();
+      if (!Files.exists(modelsFile)) {
+        return;
+      }
+
+      List<String> entries = Files.readAllLines(modelsFile);
+      List<String> kept = entries.stream().filter(entry -> URI.createURI(entry).isFile()).toList();
+      if (kept.size() < entries.size()) {
+        Files.write(modelsFile, kept);
+        log.debug(
+            "Dropped {} platform-library entry(ies) from the model registry of {}",
+            entries.size() - kept.size(),
+            folder);
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException(
+          "Failed to normalize the model registry of " + folder.toAbsolutePath(), e);
+    }
+  }
+
   public static void prepareStandalone(AdapterRegistry adapters) {
     EcorePlugin.ExtensionProcessor.process(null);
     adapters.prepareStandalone();
@@ -48,8 +83,7 @@ public final class Vsums {
     return openViewOf(provider, name, element -> true);
   }
 
-  public static View openViewOf(
-      ViewProvider provider, String name, Predicate<EObject> rootFilter) {
+  public static View openViewOf(ViewProvider provider, String name, Predicate<EObject> rootFilter) {
     ViewSelector selector =
         provider.createSelector(ViewTypeFactory.createIdentityMappingViewType(name));
     selector

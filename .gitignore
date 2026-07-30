@@ -22,3 +22,5 @@ plugin.properties
 
 # IntelliJ
 .idea/
+*.iml
+cp.txt

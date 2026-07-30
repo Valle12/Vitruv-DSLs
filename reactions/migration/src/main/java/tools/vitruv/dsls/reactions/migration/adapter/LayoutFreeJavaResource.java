@@ -18,4 +18,17 @@ final class LayoutFreeJavaResource extends JavaSourceOrClassFileResource {
     withLayoutDisabled.put(IJavaOptions.DISABLE_LAYOUT_INFORMATION_RECORDING, Boolean.TRUE);
     super.load(withLayoutDisabled);
   }
+
+  @Override
+  public void delete(Map<?, ?> options) throws IOException {
+    if (getURI() != null && !getURI().isFile() && !getURI().isPlatform()) {
+      unload();
+      if (getResourceSet() != null) {
+        getResourceSet().getResources().remove(this);
+      }
+      return;
+    }
+
+    super.delete(options);
+  }
 }

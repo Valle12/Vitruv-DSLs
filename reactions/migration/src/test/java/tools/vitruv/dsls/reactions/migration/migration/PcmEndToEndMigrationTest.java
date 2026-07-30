@@ -18,7 +18,6 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.eclipse.uml2.uml.Model;
-import org.eclipse.uml2.uml.UMLFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,7 +46,6 @@ class PcmEndToEndMigrationTest {
   private static final String UML_NS = "http://www.eclipse.org/uml2/5.0.0/UML";
   private static final String JAVA_NS_PREFIX = "http://www.emftext.org/java";
   private static final String PCM_NS_PREFIX = "http://palladiosimulator.org/PalladioComponentModel";
-  private static final Set<String> JDK_NAMESPACE_FOLDERS = Set.of("java", "javax", "sun", "jdk");
 
   private static final SpecificationSource UML_JAVA_PCM =
       () ->
@@ -95,7 +93,7 @@ class PcmEndToEndMigrationTest {
                         || name.endsWith(".java")
                         || name.endsWith(".repository");
                   })
-              .filter(path -> !isInJdkNamespaceFolder(path))
+              .filter(path -> ModelStructure.isOutsideJdkStandardLibrary(folder, path))
               .toList();
     }
 
@@ -109,24 +107,10 @@ class PcmEndToEndMigrationTest {
     return nsUris;
   }
 
-  private static boolean isInJdkNamespaceFolder(Path path) {
-    Path parent = path.getParent();
-    if (parent == null) {
-      return false;
-    }
-
-    for (Path segment : parent) {
-      if (JDK_NAMESPACE_FOLDERS.contains(segment.toString())) {
-        return true;
-      }
-    }
-
-    return false;
-  }
 
   private static TestUserInteraction permissive() {
     TestUserInteraction interaction = new TestUserInteraction();
-    interaction.onTextInput(d -> true).always().respondWith("model");
+    interaction.onTextInput(d -> true).always().respondWith("library");
     interaction.onMultipleChoiceSingleSelection(d -> true).always().respondWithChoiceAt(0);
     interaction.onConfirmation(d -> true).always().respondWith(true);
     interaction.acknowledgeNotification(d -> true);
@@ -134,7 +118,7 @@ class PcmEndToEndMigrationTest {
   }
 
   @Test
-  @DisplayName("migrates UML, Java, and PCM together")
+  @DisplayName("migrates the library example across UML, Java, and PCM together")
   void test1() throws Exception {
     JavaSetup.resetClasspathAndRegisterStandardLibrary();
     Path sourceFolder = Files.createDirectories(tempDir.resolve("pcm-vsum"));
@@ -183,15 +167,11 @@ class PcmEndToEndMigrationTest {
       View umlView = viewFactory.createViewOfElements("UML", Set.of(Model.class));
       viewFactory.changeViewRecordingChanges(
           umlView,
-          committable -> {
-            Model model = UMLFactory.eINSTANCE.createModel();
-            model.setName("shop");
-            org.eclipse.uml2.uml.Package repository = model.createNestedPackage("repository");
-            repository.createOwnedClass("Customer", false);
-            committable.registerRoot(
-                model,
-                URI.createFileURI(sourceFolder.resolve("model.uml").toAbsolutePath().toString()));
-          });
+          committable ->
+              committable.registerRoot(
+                  LibraryExampleModel.build(),
+                  URI.createFileURI(
+                      sourceFolder.resolve("library.uml").toAbsolutePath().toString())));
       return nsUrisOf(Vsums.readRoots(vsum));
     } finally {
       vsum.dispose();

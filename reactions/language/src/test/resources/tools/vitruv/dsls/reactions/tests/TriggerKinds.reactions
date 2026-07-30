@@ -1,0 +1,66 @@
+import "http://tools.vitruv.change.testutils.metamodels.allElementTypes" as minimal
+
+reactions: triggerKinds
+in reaction to changes in minimal
+execute actions in minimal
+
+reaction InsertedInList {
+	after element minimal::NonRoot inserted in minimal::NonRootObjectContainerHelper[nonRootObjectsContainment]
+	call noop()
+}
+
+reaction InsertedAsRoot {
+	after element minimal::Root inserted as root
+	call noop()
+}
+
+reaction RemovedAsRoot {
+	after element minimal::Root removed as root
+	call noop()
+}
+
+reaction AttributeReplaced {
+	after attribute replaced at minimal::Root[singleValuedEAttribute]
+	call noop()
+}
+
+reaction AttributeInserted {
+	after attribute inserted in minimal::Root[multiValuedEAttribute]
+	call noop()
+}
+
+reaction AttributeRemoved {
+	after attribute removed from minimal::Root[multiValuedEAttribute]
+	call noop()
+}
+
+reaction ElementReplaced {
+	after element minimal::NonRoot replaced at minimal::Root[singleValuedContainmentEReference]
+	call noop()
+}
+
+reaction RemovedFromList {
+	after element minimal::NonRoot removed from minimal::Root[multiValuedContainmentEReference]
+	call noop()
+}
+
+reaction Created {
+	after element minimal::NonRoot created
+	call noop()
+}
+
+reaction Deleted {
+	after element minimal::NonRoot deleted
+	call noop()
+}
+
+reaction AnyChange {
+	after anychange
+	call noop()
+}
+
+routine noop() {
+	update {
+		val ignored = ""
+	}
+}

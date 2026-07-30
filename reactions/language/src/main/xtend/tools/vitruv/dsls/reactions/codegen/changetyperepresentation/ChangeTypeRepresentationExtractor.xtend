@@ -35,7 +35,7 @@ final class ChangeTypeRepresentationExtractor {
 	static val GENERAL_CHANGE_NAME = "change"
 	
 	static def dispatch ChangeTypeRepresentation extractChangeType(Trigger trigger) {
-		val atomicChange = new ChangeTypeRepresentation(GENERAL_CHANGE_NAME, EChange, null, null, false, false, null, false)
+		val atomicChange = new ChangeTypeRepresentation(GENERAL_CHANGE_NAME, EChange, null, null, false, false, null, false, null, null)
 		return atomicChange
 	}
 	
@@ -68,13 +68,14 @@ final class ChangeTypeRepresentationExtractor {
 		val affectedEObject = modelAttributeChange.feature.metaclass.javaClassName
 		val affectedValue = modelAttributeChange.feature.feature.EType.javaClassName
 		val affectedFeature = modelAttributeChange.feature.feature
-		val atomicChange = new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, hasOldValue, hasNewValue, affectedFeature, hasIndex)
+		val atomicChange = new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, hasOldValue, hasNewValue, affectedFeature, hasIndex,
+			modelAttributeChange.feature.metaclass, modelAttributeChange.feature.feature.EType)
 		return atomicChange
 	}
 			
 	static def dispatch ChangeTypeRepresentation extractChangeType(ModelElementChange modelElementChange) {
 		if (modelElementChange?.changeType === null) {
-			return new ChangeTypeRepresentation(GENERAL_CHANGE_NAME, EChange, null, null, false, false, null, false)
+			return new ChangeTypeRepresentation(GENERAL_CHANGE_NAME, EChange, null, null, false, false, null, false, null, null)
 		} else {
 			return generateChangeTypeRepresentation(modelElementChange.changeType, modelElementChange.elementType?.metaclass as EClass)
 		}
@@ -97,7 +98,8 @@ final class ChangeTypeRepresentationExtractor {
 		} 
 		val affectedEObject = null
 		val affectedValue = if (elementClass !== null) elementClass.javaClassName else EObject.canonicalName
-		return new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, !hasNewValue, hasNewValue, null, true)
+		return new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, !hasNewValue, hasNewValue, null, true, null,
+			elementClass ?: EcorePackage.eINSTANCE.EObject)
 	}
 	
 	private static def dispatch ChangeTypeRepresentation generateChangeTypeRepresentation(ElementReferenceChangeType modelElementChange, EClass elementClass) {
@@ -130,7 +132,8 @@ final class ChangeTypeRepresentationExtractor {
 		val affectedValue = if (elementClass !== null) elementClass.javaClassName else modelElementChange.feature?.feature?.EType?.javaClassName
 		
 		val affectedFeature = modelElementChange.feature?.feature
-		return new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, hasOldValue, hasNewValue, affectedFeature, hasIndex, #[EObject.canonicalName])
+		return new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, hasOldValue, hasNewValue, affectedFeature, hasIndex, #[EObject.canonicalName],
+			modelElementChange.feature?.metaclass, elementClass ?: modelElementChange.feature?.feature?.EType)
 	}
 	
 	private static def dispatch ChangeTypeRepresentation generateChangeTypeRepresentation(ElementExistenceChangeType modelElementChange, EClass elementClass) {
@@ -148,6 +151,7 @@ final class ChangeTypeRepresentationExtractor {
 		}
 		val affectedEObject = if (elementClass !== null) elementClass.javaClassName else EcorePackage.eINSTANCE.EObject.javaClassName
 		val affectedValue = null
-		return new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, false, false, null, false)
+		return new ChangeTypeRepresentation(name, clazz.instanceClass, affectedEObject, affectedValue, false, false, null, false,
+			elementClass ?: EcorePackage.eINSTANCE.EObject, null)
 	}
 }

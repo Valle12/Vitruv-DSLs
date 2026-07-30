@@ -11,7 +11,6 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
-import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 
@@ -22,20 +21,20 @@ public final class ModelSnapshot {
     this.entries = List.copyOf(entries);
   }
 
-  public static ModelSnapshot of(Collection<URI> resourceUris, AdapterRegistry adapters) {
-    ResourceSet loadSet = new ResourceSetImpl();
-    loadSet.getLoadOptions().putAll(adapters.combinedLoadOptions());
+  public static ModelSnapshot of(
+      Collection<URI> resourceUris, AdapterRegistry adapters, Path vsumFolder) {
+    ResourceSet loadSet = adapters.newResourceSet();
 
     List<URI> perRootUris = new ArrayList<>();
     List<EObject> allRoots = new ArrayList<>();
     for (URI uri : new LinkedHashSet<>(resourceUris)) {
-      if (!uri.isFile() || adapters.isPlatformLibraryResource(uri)) {
+      if (!adapters.isMigratedModel(uri, vsumFolder)) {
         continue;
       }
 
       Resource resource = loadSet.getResource(uri, true);
       for (EObject root : resource.getContents()) {
-        adapters.adapterFor(root).prepareForSnapshot(root);
+        adapters.adapterFor(root).dropResolutionCaches(root);
         perRootUris.add(uri);
         allRoots.add(root);
       }

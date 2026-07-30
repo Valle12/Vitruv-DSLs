@@ -1,19 +1,27 @@
 package tools.vitruv.dsls.reactions.migration;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import tools.vitruv.change.interaction.CliInteractionResultProviderImpl;
+import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
+import tools.vitruv.dsls.reactions.migration.cli.AskMode;
 import tools.vitruv.dsls.reactions.migration.cli.CommandLine;
 import tools.vitruv.dsls.reactions.migration.cli.MigrationOptions;
 import tools.vitruv.dsls.reactions.migration.cli.SourceUpdateMode;
 import tools.vitruv.dsls.reactions.migration.cli.UsageException;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 import tools.vitruv.dsls.reactions.migration.graph.PropagationGraph;
+import tools.vitruv.dsls.reactions.migration.interaction.NonInteractiveDefaults;
+import tools.vitruv.dsls.reactions.migration.migration.MigrationMode;
 import tools.vitruv.dsls.reactions.migration.migration.MigrationReport;
 import tools.vitruv.dsls.reactions.migration.migration.MigrationRunner;
 import tools.vitruv.dsls.reactions.migration.migration.MigrationSettings;
+import tools.vitruv.dsls.reactions.migration.migration.MigrationStatistics;
+import tools.vitruv.dsls.reactions.migration.migration.SelectiveOutcome;
+import tools.vitruv.dsls.reactions.migration.preservation.PreservationOutcome;
 import tools.vitruv.dsls.reactions.migration.spec.JarSpecificationSource;
 import tools.vitruv.dsls.reactions.migration.spec.SpecificationSource;
 import tools.vitruv.dsls.reactions.migration.strategy.DominanceStrategy;
@@ -30,9 +38,17 @@ public class Main {
   }
 
   public static int run(String[] args) {
+    return run(
+        args,
+        System.console() == null
+            ? new NonInteractiveDefaults()
+            : new CliInteractionResultProviderImpl());
+  }
+
+  public static int run(String[] args, InteractionResultProvider interactionFallback) {
     CommandLine commandLine = new CommandLine(args);
     if (commandLine.isHelpRequested()) {
-      log.info("\n{}", CommandLine.usage());
+      log.info("\n{}", CommandLine.USAGE);
       return 0;
     }
 
@@ -41,14 +57,14 @@ public class Main {
       options = MigrationOptions.parse(commandLine);
     } catch (UsageException e) {
       log.error(e.getMessage());
-      log.info("\n{}", CommandLine.usage());
+      log.info("\n{}", CommandLine.USAGE);
       return 1;
     }
 
     AdapterRegistry adapters = new AdapterRegistry();
     Vsums.prepareStandalone(adapters);
 
-    SpecificationSource specifications;
+    JarSpecificationSource specifications;
     try {
       specifications = JarSpecificationSource.fromJar(options.specificationsJar());
     } catch (IOException | RuntimeException e) {
@@ -59,6 +75,19 @@ public class Main {
       return 1;
     }
 
+    try (specifications) {
+      return migrate(options, adapters, specifications, interactionFallback);
+    } catch (IOException e) {
+      log.error("Failed to release the specification jar: {}", e.getMessage());
+      return 1;
+    }
+  }
+
+  private static int migrate(
+      MigrationOptions options,
+      AdapterRegistry adapters,
+      SpecificationSource specifications,
+      InteractionResultProvider interactionFallback) {
     PropagationGraph graph = new PropagationGraph(specifications.createSpecifications());
     log.info("{}", graph);
 
@@ -75,9 +104,9 @@ public class Main {
             specifications,
             graph,
             dominanceStrategyFor(options),
-            new CliInteractionResultProviderImpl(),
+            interactionFallback,
             adapters,
-            settingsFor(options));
+            settingsFor(options, interactionFallback));
     log.info("Migrating VSUM at {}", options.vsumFolder().toAbsolutePath());
     try {
       logReport(runner.run(options.vsumFolder()));
@@ -105,12 +134,42 @@ public class Main {
     };
   }
 
-  private static MigrationSettings settingsFor(MigrationOptions options) {
+  private static MigrationSettings settingsFor(
+      MigrationOptions options, InteractionResultProvider interactionFallback) {
+    if (options.mode() != MigrationMode.FULL) {
+      log.info(
+          "Selective mode {} repropagates only the affected elements; the source update applies"
+              + " only if the run falls back to a full migration.",
+          options.mode());
+    }
+
     return new MigrationSettings(
-        options.sourceUpdate() == SourceUpdateMode.FIXPOINT, options.maxSourceUpdateRounds());
+        options.sourceUpdate() == SourceUpdateMode.FIXPOINT,
+        options.maxSourceUpdateRounds(),
+        options.mode(),
+        options.preservation(),
+        asksOnAmbiguity(options, interactionFallback));
+  }
+
+  private static boolean asksOnAmbiguity(
+      MigrationOptions options, InteractionResultProvider interactionFallback) {
+    if (options.ask() == AskMode.NEVER || options.preservation().leavesModelsUnchanged()) {
+      return false;
+    }
+
+    if (interactionFallback instanceof NonInteractiveDefaults) {
+      log.info(
+          "No interactive console; content the metamodels leave several places for is reported"
+              + " instead of asked about.");
+      return false;
+    }
+
+    return true;
   }
 
   private static void logReport(MigrationReport report) {
+    logSelectiveOutcome(report.selective());
+    logStatistics(report.statistics());
     if (!report.migrated()) {
       log.info("Nothing to migrate.");
       return;
@@ -126,9 +185,79 @@ public class Main {
           report.sourceUpdate().rounds(),
           report.sourceUpdate().converged(),
           report.sourceUpdate().lastDeltaSize());
+      logRetractions(report.sourceUpdate().retractions());
     }
+    logPreservation(report.preservation());
     if (!report.requestedInteractions().isEmpty()) {
       log.info("Reactions requested user interaction: {}", report.requestedInteractions());
+    }
+  }
+
+  private static void logRetractions(List<String> retractions) {
+    if (retractions.isEmpty()) {
+      return;
+    }
+
+    log.warn(
+        "Source update removed {} element(s) the new rules no longer produce:", retractions.size());
+    retractions.forEach(retraction -> log.warn("  retracted: {}", retraction));
+  }
+
+  private static void logPreservation(PreservationOutcome preservation) {
+    if (!preservation.attempted()) {
+      return;
+    }
+
+    log.info(
+        "Preservation ({}): {} item(s) {}, {} item(s) could not be kept, {} left to deal with"
+            + " by hand",
+        preservation.policy(),
+        preservation.preserved().size(),
+        preservation.applied() ? "re-attached" : "would be re-attached",
+        preservation.lost().size(),
+        preservation.manualItems());
+    preservation
+        .lost()
+        .forEach(
+            item ->
+                log.info("  not kept: {} - {}", item.element(), item.reason().getDescription()));
+    preservation
+        .decisions()
+        .forEach(
+            item ->
+                log.info(
+                    "  {}: {} - {}",
+                    item.kind().getDescription(),
+                    item.subject(),
+                    item.detail() == null ? "" : item.detail()));
+    preservation
+        .recovery()
+        .ifPresent(folder -> log.info("  recover them from {}", folder.toAbsolutePath()));
+  }
+
+  private static void logStatistics(MigrationStatistics statistics) {
+    log.info("Migration took {} ms in total", statistics.total().toMillis());
+    statistics
+        .phases()
+        .forEach(phase -> log.info("  {}: {} ms", phase.phase(), phase.duration().toMillis()));
+  }
+
+  private static void logSelectiveOutcome(SelectiveOutcome selective) {
+    if (!selective.attempted()) {
+      return;
+    }
+
+    if (selective.fellBackToFull()) {
+      log.info(
+          "Selective mode {} fell back to a full migration: {}",
+          selective.mode(),
+          selective.fallbackReason().orElse(""));
+    } else {
+      log.info(
+          "Selective mode {}: {} dirty rule(s), {} affected element(s) repropagated",
+          selective.mode(),
+          selective.dirtyRuleCount(),
+          selective.affectedElementCount());
     }
   }
 
