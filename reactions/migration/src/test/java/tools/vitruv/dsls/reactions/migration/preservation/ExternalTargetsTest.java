@@ -22,9 +22,12 @@ import org.emftext.language.java.containers.CompilationUnit;
 import org.emftext.language.java.containers.ContainersFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 
+@ExtendWith(RegisterMetamodelsInStandalone.class)
 class ExternalTargetsTest {
   private static final AdapterRegistry ADAPTERS = new AdapterRegistry();
 

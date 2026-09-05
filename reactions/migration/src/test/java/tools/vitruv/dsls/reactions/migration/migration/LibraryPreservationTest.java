@@ -202,6 +202,26 @@ class LibraryPreservationTest {
     assertEquals(0, totalWeightStatementCount());
   }
 
+  @Test
+  @DisplayName("accessors are told apart by their correspondence tag, so nothing is asked about them")
+  void test8() throws Exception {
+    seedLibraryModel();
+
+    MigrationReport report = migrate(PreservationPolicy.REPORT);
+
+    assertTrue(report.preservation().attempted());
+    List<String> accessorQuestions =
+        report.preservation().openDecisions().stream()
+            .map(decision -> decision.subject() + " " + decision.detail())
+            .filter(question -> question.contains("ClassMethod"))
+            .toList();
+    assertEquals(
+        List.of(),
+        accessorQuestions,
+        "a getter corresponds to its property tagged 'getter' and the setter tagged 'setter';"
+            + " the pass must pair them by that tag instead of asking");
+  }
+
   private int describeStatementCount() throws IOException {
     return LibraryUserContent.statementCount(
         vsumFolder, ADAPTERS, LibraryExampleModel.BOOK, LibraryUserContent.BODIED_METHOD);

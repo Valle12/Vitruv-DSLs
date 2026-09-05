@@ -28,7 +28,7 @@ class JsonMapperTest {
   @DisplayName("Test with list of Strings")
   void test2() {
     List<String> result =
-        jsonMapper.fromJsonToList("[\"hello\", \"world\"]", new TypeReference<List<String>>() {});
+        jsonMapper.fromJsonToList("[\"hello\", \"world\"]", new TypeReference<>() {});
 
     assertEquals(2, result.size());
   }

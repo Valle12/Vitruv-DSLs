@@ -1,9 +1,13 @@
 package tools.vitruv.dsls.reactions.migration.migration;
 
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.eclipse.emf.common.util.URI;
@@ -22,10 +26,15 @@ final class RunnerContext implements DominanceContext {
   private final PropagationGraph graph;
   private final InternalVirtualModel sourceVsum;
   private final Set<MetamodelNode> presentNodes;
-  private final Map<String, List<EObject>> rootsByNsUri;
   private final AdapterRegistry adapters;
   private final TrialMigration trialMigration;
   private final Path vsumFolder;
+  private final List<SourceSelection.Trial> trials = new ArrayList<>();
+  private final Map<MetamodelNode, Path> trialFolders = new LinkedHashMap<>();
+
+  private static Duration elapsedSince(long nanoTimestamp) {
+    return Duration.ofNanos(System.nanoTime() - nanoTimestamp);
+  }
 
   @Override
   public PropagationGraph graph() {
@@ -39,8 +48,27 @@ final class RunnerContext implements DominanceContext {
 
   @Override
   public long trialChangeCount(MetamodelNode candidate) {
-    return trialMigration.changeCountFor(
-        candidate, rootsByNsUri, fileResourceUrisOwnedBy(candidate));
+    long startedAt = System.nanoTime();
+    try {
+      TrialMigration.Outcome outcome =
+          trialMigration.run(candidate, fileResourceUrisOwnedBy(candidate));
+      trials.add(
+          SourceSelection.Trial.completed(
+              candidate, outcome.changeCount(), elapsedSince(startedAt)));
+      trialFolders.put(candidate, outcome.folder());
+      return outcome.changeCount();
+    } catch (RuntimeException e) {
+      trials.add(SourceSelection.Trial.failed(candidate, elapsedSince(startedAt), e));
+      throw e;
+    }
+  }
+
+  SourceSelection selection() {
+    return SourceSelection.of(List.copyOf(presentNodes), trials);
+  }
+
+  Optional<Path> trialFolderOf(MetamodelNode candidate) {
+    return Optional.ofNullable(trialFolders.get(candidate));
   }
 
   private List<URI> fileResourceUrisOwnedBy(MetamodelNode node) {

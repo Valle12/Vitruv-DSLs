@@ -1,0 +1,259 @@
+#!/usr/bin/env bash
+# Measures the three strategies for choosing a migration's source of truth: the library example
+# derived with every feature configuration and migrated to every other one by a full migration,
+# once per strategy, plus the brake-system chain, into <output folder>/selection.
+#
+# Usage:
+#   ./generate-selection-matrix <output folder> [options]
+#
+# Options:
+#   --from N        only the cells derived with configN (a row)
+#   --to M          only the cells migrated to configM (a column)
+#   --cell F T      only the one cell, configF migrated to configT
+#   --strategy S    only one strategy: explicit, explicit-<metamodel>, reachability or
+#                   fewest-changes (explicit-java for the library; explicit-cad, -simulink and
+#                   -autosar for the brake system)
+#   --brake         only the brake-system runs
+#   --library       only the library runs, leaving the brake-system runs as they are
+#   --force         redo runs that are already there
+#
+# Without a restriction it does all 81 cells for each of the four library strategies and the six
+# brake-system runs: the explicit strategy told each metamodel in turn, reachability and
+# fewest-changes. Runs that already have their properties file are skipped, so an interrupted
+# sweep continues rather than starting over. The runs are made one after the other, each in a JVM
+# of its own, because they are timed. Needs a JDK 21 in JAVA_HOME and the baselines
+# generate-config-matrix derives.
+
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+REPOSITORY="$(cd "$HERE/../.." && pwd)"
+PROPAGATIONS="$HERE/src/test/resources/propagations"
+SNAPSHOTS="$HERE/target/matrix-baselines"
+LOGS="$HERE/target/matrix-selection"
+GENERATOR="tools.vitruv.dsls.reactions.migration.migration.SourceSelectionArtifactGenerator"
+CONFIGURATIONS=9
+LIBRARY_STRATEGIES=(explicit explicit-java reachability fewest-changes)
+BRAKE_STRATEGIES=(explicit explicit-cad explicit-simulink explicit-autosar reachability fewest-changes)
+
+to_host_path() {
+  if command -v cygpath > /dev/null 2>&1; then
+    cygpath -m "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
+usage() {
+  echo "Usage: $(basename "$0") <output folder> [--from N] [--to M] [--cell F T] [--strategy S] [--brake | --library] [--force]" >&2
+}
+
+if [ "$#" -lt 1 ]; then
+  usage
+  exit 1
+fi
+
+TARGET="$1"
+shift
+
+ROW=""
+COLUMN=""
+CELL_FROM=""
+CELL_TO=""
+STRATEGY=""
+BRAKE_ONLY=false
+LIBRARY_ONLY=false
+FORCE=false
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --from) ROW="${2:-}"; shift 2 ;;
+    --to) COLUMN="${2:-}"; shift 2 ;;
+    --cell) CELL_FROM="${2:-}"; CELL_TO="${3:-}"; shift 3 ;;
+    --strategy) STRATEGY="${2:-}"; shift 2 ;;
+    --brake) BRAKE_ONLY=true; shift ;;
+    --library) LIBRARY_ONLY=true; shift ;;
+    --force) FORCE=true; shift ;;
+    *) echo "Unknown option: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+check_configuration() {
+  case "$1" in
+    [1-9]) ;;
+    *) echo "Not a configuration number: $1. There are 1 to $CONFIGURATIONS." >&2; exit 1 ;;
+  esac
+}
+
+for number in $ROW $COLUMN $CELL_FROM $CELL_TO; do
+  check_configuration "$number"
+done
+if { [ -n "$CELL_FROM" ] && [ -z "$CELL_TO" ]; } || { [ -z "$CELL_FROM" ] && [ -n "$CELL_TO" ]; }; then
+  echo "--cell takes two configuration numbers." >&2
+  exit 1
+fi
+
+contains() {
+  local needle="$1"
+  shift
+  for item in "$@"; do
+    [ "$item" = "$needle" ] && return 0
+  done
+  return 1
+}
+
+if [ -n "$STRATEGY" ]; then
+  if ! contains "$STRATEGY" "${LIBRARY_STRATEGIES[@]}" "${BRAKE_STRATEGIES[@]}"; then
+    echo "Not a strategy: $STRATEGY. Library: ${LIBRARY_STRATEGIES[*]}; brake system: ${BRAKE_STRATEGIES[*]}." >&2
+    exit 1
+  fi
+  STRATEGIES=("$STRATEGY")
+else
+  STRATEGIES=("${LIBRARY_STRATEGIES[@]}")
+  for strategy in "${BRAKE_STRATEGIES[@]}"; do
+    contains "$strategy" "${STRATEGIES[@]}" || STRATEGIES+=("$strategy")
+  done
+fi
+
+if [ ! -d "$TARGET" ]; then
+  echo "The output folder does not exist: $TARGET" >&2
+  exit 1
+fi
+TARGET="$(cd "$TARGET" && pwd)"
+
+JAVA_MAJOR="$("${JAVA_HOME:-}/bin/java" -version 2>&1 | head -n 1 | sed -E 's/.*"([0-9]+)[^"]*".*/\1/')"
+if ! [ "$JAVA_MAJOR" -ge 21 ] 2> /dev/null; then
+  echo "The build needs a JDK 21 or newer in JAVA_HOME; JAVA_HOME is '${JAVA_HOME:-}' (java $JAVA_MAJOR)." >&2
+  exit 1
+fi
+
+if [ "$BRAKE_ONLY" = true ] && [ "$LIBRARY_ONLY" = true ]; then
+  echo "--brake and --library exclude each other." >&2
+  exit 1
+fi
+
+RESTRICTED=false
+if [ -n "$ROW" ] || [ -n "$COLUMN" ] || [ -n "$CELL_FROM" ] || [ -n "$STRATEGY" ] || [ "$BRAKE_ONLY" = true ] || [ "$LIBRARY_ONLY" = true ]; then
+  RESTRICTED=true
+fi
+
+# Which cells this invocation is about.
+if [ "$BRAKE_ONLY" = true ]; then
+  FROMS=()
+  TOS=()
+elif [ -n "$CELL_FROM" ]; then
+  FROMS=("$CELL_FROM")
+  TOS=("$CELL_TO")
+else
+  if [ -n "$ROW" ]; then FROMS=("$ROW"); else FROMS=(1 2 3 4 5 6 7 8 9); fi
+  if [ -n "$COLUMN" ]; then TOS=("$COLUMN"); else TOS=(1 2 3 4 5 6 7 8 9); fi
+fi
+
+# Every cell starts from a baseline the configuration matrix derived.
+if [ "${#FROMS[@]}" -gt 0 ]; then
+  for number in "${FROMS[@]}"; do
+    if [ ! -d "$SNAPSHOTS/config${number}" ]; then
+      echo "The config${number} baseline is missing. Derive it first with" >&2
+      echo "  reactions/migration/generate-config-matrix <output folder> --from ${number}" >&2
+      exit 1
+    fi
+  done
+  for number in "${TOS[@]}"; do
+    if [ ! -f "$PROPAGATIONS/umljava-config${number}.jar" ]; then
+      echo "umljava-config${number}.jar is missing. Build the jars first:" >&2
+      echo "  reactions/migration/build-propagation-jars" >&2
+      exit 1
+    fi
+  done
+fi
+
+cd "$REPOSITORY"
+./mvnw -q -B -pl reactions/migration test-compile
+
+generate() {
+  local label="$1"
+  local log="$2"
+  shift 2
+  echo "=== $label"
+  mkdir -p "$(dirname "$log")"
+  if ! ./mvnw -q -B -pl reactions/migration \
+      org.codehaus.mojo:exec-maven-plugin:3.6.3:java \
+      -Dexec.mainClass="$GENERATOR" \
+      -Dexec.classpathScope=test \
+      -Dexec.args="\"$(to_host_path "$TARGET")\" $*" > "$log" 2>&1; then
+    echo "The $label step failed; see $log:" >&2
+    tail -n 30 "$log" >&2
+    echo "Fix the failure and run this again - finished runs are skipped." >&2
+    exit 1
+  fi
+}
+
+# Only a full sweep starts over; a restricted run adds to what is there.
+if [ "$RESTRICTED" = false ] && [ "$FORCE" = true ]; then
+  generate "reset" "$LOGS/reset.log" reset
+fi
+
+for strategy in "${STRATEGIES[@]}"; do
+  if [ "${#FROMS[@]}" -gt 0 ] && contains "$strategy" "${LIBRARY_STRATEGIES[@]}"; then
+    for from in "${FROMS[@]}"; do
+      for to in "${TOS[@]}"; do
+        if [ "$FORCE" = false ] && [ -f "$TARGET/selection/$strategy/config${from}-to-config${to}.properties" ]; then
+          echo "=== $strategy: cell $from -> $to (already there)"
+          continue
+        fi
+        generate "$strategy: cell $from -> $to" "$LOGS/$strategy/config${from}-to-config${to}.log" cell "$from" "$to" "$strategy"
+      done
+    done
+  fi
+
+  # Only the strategies that apply to the chain: explicit variants told one of its metamodels.
+  if ! contains "$strategy" "${BRAKE_STRATEGIES[@]}"; then
+    continue
+  fi
+  if [ "$LIBRARY_ONLY" = true ]; then
+    continue
+  fi
+  if [ "$BRAKE_ONLY" = true ] || [ "$RESTRICTED" = false ] || { [ -n "$STRATEGY" ] && [ -z "$ROW" ] && [ -z "$COLUMN" ] && [ -z "$CELL_FROM" ]; }; then
+    if [ "$FORCE" = false ] && [ -f "$TARGET/selection/$strategy/brake-system.properties" ]; then
+      echo "=== $strategy: brake system (already there)"
+    else
+      generate "$strategy: brake system" "$LOGS/$strategy/brake-system.log" brake "$strategy"
+    fi
+  fi
+done
+
+generate "index" "$LOGS/index.log" index
+
+# A restricted run only claims the runs it was asked for; a full one has to have made every run,
+# and a whole --library sweep every library run.
+WHOLE_LIBRARY=false
+if [ "$RESTRICTED" = false ] || { [ "$LIBRARY_ONLY" = true ] && [ -z "$ROW" ] && [ -z "$COLUMN" ] && [ -z "$CELL_FROM" ] && [ -z "$STRATEGY" ]; }; then
+  WHOLE_LIBRARY=true
+fi
+MISSING=0
+if [ "$WHOLE_LIBRARY" = true ]; then
+  for strategy in "${LIBRARY_STRATEGIES[@]}"; do
+    for from in $(seq 1 "$CONFIGURATIONS"); do
+      for to in $(seq 1 "$CONFIGURATIONS"); do
+        if [ ! -f "$TARGET/selection/$strategy/config${from}-to-config${to}.properties" ]; then
+          echo "Missing: selection/$strategy/config${from}-to-config${to}.properties" >&2
+          MISSING=$((MISSING + 1))
+        fi
+      done
+    done
+  done
+fi
+if [ "$RESTRICTED" = false ]; then
+  for strategy in "${BRAKE_STRATEGIES[@]}"; do
+    if [ ! -f "$TARGET/selection/$strategy/brake-system.properties" ]; then
+      echo "Missing: selection/$strategy/brake-system.properties" >&2
+      MISSING=$((MISSING + 1))
+    fi
+  done
+fi
+if [ "$MISSING" -gt 0 ]; then
+  echo "$MISSING run(s) were not made; the output folder is incomplete." >&2
+  exit 1
+fi
+
+echo "Wrote the source-selection runs to $TARGET/selection"

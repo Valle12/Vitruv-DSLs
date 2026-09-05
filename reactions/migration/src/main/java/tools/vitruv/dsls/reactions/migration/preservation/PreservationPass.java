@@ -80,7 +80,8 @@ public final class PreservationPass {
     lost.addAll(applier.lost());
     List<DecisionItem> allDecisions = new ArrayList<>(decisions);
     allDecisions.addAll(applier.decisions());
-    return new PreservationOutcome(context.policy(), applier.preserved(), lost, allDecisions, null);
+    return new PreservationOutcome(
+        context.policy(), applier.preserved(), lost, allDecisions, null, null);
   }
 
   private static PreservationOutcome analyse(
@@ -107,7 +108,7 @@ public final class PreservationPass {
       List<DecisionItem> decisions) {
     PreservationPolicy policy = context.policy();
     if (content.candidates().isEmpty() && content.orphanResources().isEmpty()) {
-      return new PreservationOutcome(policy, List.of(), content.losses(), decisions, null);
+      return new PreservationOutcome(policy, List.of(), content.losses(), decisions, null, null);
     }
 
     Path vsumFolder = context.vsumFolder();

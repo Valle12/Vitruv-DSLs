@@ -1,15 +1,22 @@
 package tools.vitruv.dsls.reactions.migration.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static tools.vitruv.dsls.reactions.migration.testspecs.SelectiveMockupSpecifications.CLASS_INSERTED;
 import static tools.vitruv.dsls.reactions.migration.testspecs.SelectiveMockupSpecifications.CLASS_TRIGGER;
 import static tools.vitruv.dsls.reactions.migration.testspecs.SelectiveMockupSpecifications.INTERFACE_TRIGGER;
+import static tools.vitruv.dsls.reactions.migration.testspecs.SelectiveMockupSpecifications.METHOD_INSERTED;
 import static tools.vitruv.dsls.reactions.migration.testspecs.SelectiveMockupSpecifications.METHOD_TRIGGER;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.eclipse.emf.ecore.EObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import tools.vitruv.change.propagation.ConsistencyRuleId;
 import tools.vitruv.change.propagation.ConsistencyRuleTrigger;
 import tools.vitruv.change.propagation.ConsistencyRuleTriggerMatcher;
 import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
@@ -66,5 +73,28 @@ class AffectedElementsTest {
   void test3() {
     assertEquals(
         List.of(), AffectedElements.find(List.of(uClass), List.of(matcherFor(METHOD_TRIGGER))));
+  }
+
+  @Test
+  @DisplayName("attributes each selected element to the dirty rules whose triggers matched it")
+  void test4() {
+    AffectedElements.Selection selection =
+        AffectedElements.select(
+            List.of(uPackage),
+            List.of(
+                new DirtyMatcher(CLASS_INSERTED, matcherFor(CLASS_TRIGGER)),
+                new DirtyMatcher(METHOD_INSERTED, matcherFor(METHOD_TRIGGER))),
+            element -> false);
+
+    Map<EObject, List<ConsistencyRuleId>> matchedBy =
+        selection.elements().stream()
+            .collect(
+                Collectors.toMap(
+                    AffectedElements.Selected::element, AffectedElements.Selected::matchedBy));
+    assertEquals(
+        Map.of(uClass, List.of(CLASS_INSERTED), uMethod, List.of(METHOD_INSERTED)), matchedBy);
+    assertEquals(Map.of(CLASS_INSERTED, 1, METHOD_INSERTED, 1), selection.matchesPerRule());
+    assertEquals(4, selection.probedElements(), "package, class, interface and method");
+    assertTrue(selection.elements().stream().allMatch(each -> each.refersTo() == null));
   }
 }

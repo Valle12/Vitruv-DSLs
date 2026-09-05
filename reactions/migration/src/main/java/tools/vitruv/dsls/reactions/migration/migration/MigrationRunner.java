@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ import tools.vitruv.dsls.reactions.migration.vsum.PersistedRules;
 import tools.vitruv.dsls.reactions.migration.vsum.ScratchArea;
 import tools.vitruv.dsls.reactions.migration.vsum.UuidPreRegistration;
 import tools.vitruv.dsls.reactions.migration.vsum.VsumBackup;
+import tools.vitruv.dsls.reactions.migration.vsum.VsumRelocation;
 import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
 import tools.vitruv.framework.views.CommittableView;
 import tools.vitruv.framework.views.View;
@@ -92,6 +94,14 @@ public class MigrationRunner {
     }
 
     return files;
+  }
+
+  private static void adoptTrial(Path trialFolder, Path folder) {
+    VsumRelocation.copy(trialFolder, folder);
+    Vsums.normalizeModelRegistry(folder);
+    log.info(
+        "Adopted the trial migration in {} as the result instead of re-deriving again",
+        trialFolder.getFileName());
   }
 
   private static void deleteModelFiles(List<URI> fileUris) {
@@ -154,12 +164,12 @@ public class MigrationRunner {
     return persisted;
   }
 
-  private static List<ConsistencyRuleTriggerMatcher> matchersFor(
+  private static List<DirtyMatcher> matchersFor(
       SortedSet<ConsistencyRuleId> dirtyIds,
       PersistedRules persisted,
       RuleHashRegistry currentRules) {
     Map<ConsistencyRuleId, ConsistencyRuleTrigger> currentTriggers = currentRules.getRuleTriggers();
-    List<ConsistencyRuleTriggerMatcher> matchers = new ArrayList<>();
+    List<DirtyMatcher> matchers = new ArrayList<>();
     for (ConsistencyRuleId dirtyId : dirtyIds) {
       ConsistencyRuleTrigger trigger =
           currentTriggers.getOrDefault(dirtyId, persisted.triggers().get(dirtyId));
@@ -169,32 +179,44 @@ public class MigrationRunner {
       }
 
       matchers.add(
-          ConsistencyRuleTriggerMatcher.of(trigger)
-              .orElseThrow(
-                  () ->
-                      new FallbackToFullMigration(
-                          "the trigger of rule "
-                              + dirtyId.value()
-                              + " references a metaclass that is not registered: "
-                              + trigger.serialize())));
+          new DirtyMatcher(
+              dirtyId,
+              ConsistencyRuleTriggerMatcher.of(trigger)
+                  .orElseThrow(
+                      () ->
+                          new FallbackToFullMigration(
+                              "the trigger of rule "
+                                  + dirtyId.value()
+                                  + " references a metaclass that is not registered: "
+                                  + trigger.serialize()))));
     }
 
     return matchers;
   }
 
-  private static List<EObject> affectedSourceElements(
+  private static AffectedElements.Selection affectedSourceElements(
       CommittableView committable,
-      List<ConsistencyRuleTriggerMatcher> matchers,
+      List<DirtyMatcher> matchers,
       Set<URI> sourceUris,
       NotRepropagated notRepropagated) {
     List<EObject> sourceRoots =
         committable.getRootObjects().stream()
             .filter(root -> isOwnedByResourceIn(root, sourceUris))
             .toList();
-    List<EObject> matched =
-        AffectedElements.find(sourceRoots, matchers, notRepropagated.asExclusion());
-    return AffectedElements.withSourceReferrers(
-        matched, sourceRoots, notRepropagated.asExclusion());
+    return AffectedElements.select(sourceRoots, matchers, notRepropagated.asExclusion());
+  }
+
+  private static List<SelectiveOutcome.AffectedElement> describe(
+      List<AffectedElements.Selected> selected) {
+    return selected.stream()
+        .map(
+            each ->
+                new SelectiveOutcome.AffectedElement(
+                    NotRepropagated.keyOf(each.element()),
+                    NotRepropagated.metaclassOf(each.element()),
+                    each.matchedBy().stream().map(ConsistencyRuleId::value).toList(),
+                    Optional.ofNullable(each.refersTo()).map(NotRepropagated::keyOf)))
+        .toList();
   }
 
   private static boolean isOwnedByResourceIn(EObject element, Set<URI> resourceUris) {
@@ -260,6 +282,15 @@ public class MigrationRunner {
     return recoverable;
   }
 
+  private static LoadedSource loadSource(InternalVirtualModel vsum) {
+    try {
+      return new LoadedSource(vsum, ModelGroups.byNsUri(Vsums.liveRoots(vsum)));
+    } catch (RuntimeException e) {
+      vsum.dispose();
+      throw e;
+    }
+  }
+
   public MigrationReport run(Path vsumFolder) {
     PhaseTimer timer = new PhaseTimer();
     Vsums.normalizeModelRegistry(vsumFolder);
@@ -272,8 +303,7 @@ public class MigrationRunner {
 
   private MigrationReport runFull(Path vsumFolder, SelectiveOutcome selective, PhaseTimer timer) {
     try (ScratchArea scratch = new ScratchArea()) {
-      Optional<PreparedMigration> prepared =
-          timer.time("prepare", () -> prepareMigration(vsumFolder, scratch));
+      Optional<PreparedMigration> prepared = prepareMigration(vsumFolder, scratch, timer);
       return prepared
           .map(
               preparedMigration ->
@@ -302,7 +332,7 @@ public class MigrationRunner {
               + " nothing to repropagate.",
           settings.mode());
       return MigrationReport.nothingToDo(
-          SelectiveOutcome.clean(settings.mode()), timer.statistics());
+          SelectiveOutcome.clean(settings.mode(), dirty.report(Map.of())), timer.statistics());
     }
 
     return repropagateAffectedElements(folder, dirty, timer);
@@ -310,23 +340,34 @@ public class MigrationRunner {
 
   private DirtyRules dirtyRulesOf(Path folder) {
     PersistedRules persisted = persistedRulesOf(folder);
-    RuleHashRegistry currentRules = currentRulesOfNewSpecifications();
+    CurrentRules current = currentRulesOfNewSpecifications();
+    RuleHashRegistry currentRules = current.registry();
     RuleHashDiff diff = RuleHashDiff.between(persisted.hashes(), currentRules.getRuleHashes());
     SortedSet<ConsistencyRuleId> dirtyIds = diff.dirtyIds(settings.mode());
+    int persistedCount = persisted.hashes().size();
+    int currentCount = currentRules.getRuleHashes().size();
     if (dirtyIds.isEmpty()) {
-      return new DirtyRules(dirtyIds, List.of());
+      return new DirtyRules(
+          diff, dirtyIds, List.of(), persistedCount, currentCount, current.specifications());
     }
 
     log.info(
         "Dirty rules in mode {}: {}",
         settings.mode(),
         dirtyIds.stream().map(ConsistencyRuleId::value).toList());
-    return new DirtyRules(dirtyIds, matchersFor(dirtyIds, persisted, currentRules));
+    return new DirtyRules(
+        diff,
+        dirtyIds,
+        matchersFor(dirtyIds, persisted, currentRules),
+        persistedCount,
+        currentCount,
+        current.specifications());
   }
 
-  private RuleHashRegistry currentRulesOfNewSpecifications() {
+  private CurrentRules currentRulesOfNewSpecifications() {
     RuleHashRegistry registry = new RuleHashRegistry();
-    for (ChangePropagationSpecification specification : specifications.createSpecifications()) {
+    List<ChangePropagationSpecification> instances = specifications.createSpecifications();
+    for (ChangePropagationSpecification specification : instances) {
       registry.putConsistencyRules(
           specification.getConsistencyRuleHashes(), specification.getConsistencyRuleTriggers());
     }
@@ -335,7 +376,7 @@ public class MigrationRunner {
       throw new FallbackToFullMigration("the new specifications expose no rule hashes");
     }
 
-    return registry;
+    return new CurrentRules(registry, instances);
   }
 
   private MigrationReport repropagateAffectedElements(
@@ -343,13 +384,13 @@ public class MigrationRunner {
     try (ScratchArea scratch = new ScratchArea()) {
       DetectingUserInteraction interaction = new DetectingUserInteraction(interactionFallback);
       InternalVirtualModel vsum =
-          Vsums.build(folder, specifications.createSpecifications(), interaction);
+          timer.time("load", () -> Vsums.build(folder, dirty.specifications(), interaction));
       try {
-        List<EObject> roots = Vsums.readRoots(vsum);
+        List<EObject> roots = timer.time("roots", () -> Vsums.liveRoots(vsum));
         if (roots.isEmpty()) {
           log.warn("No models found in {}, nothing to migrate.", folder.toAbsolutePath());
           return MigrationReport.nothingToDo(
-              SelectiveOutcome.clean(settings.mode()), timer.statistics());
+              SelectiveOutcome.clean(settings.mode(), dirty.report(Map.of())), timer.statistics());
         }
 
         Map<String, List<EObject>> rootsByNsUri = ModelGroups.byNsUri(roots);
@@ -359,37 +400,56 @@ public class MigrationRunner {
               "no registered specification handles the present models " + rootsByNsUri.keySet());
         }
 
-        TrialMigration trialMigration =
-            new TrialMigration(specifications, adapters, interactionFallback, scratch, folder);
+        RunnerContext context =
+            new RunnerContext(
+                graph,
+                vsum,
+                presentNodes,
+                adapters,
+                new TrialMigration(specifications, adapters, interactionFallback, scratch, folder),
+                folder);
         DominancePlan plan =
-            new MigrationPlanner(graph, strategy)
-                .plan(
-                    new RunnerContext(
-                        graph, vsum, presentNodes, rootsByNsUri, adapters, trialMigration, folder));
+            timer.time("dominance", () -> new MigrationPlanner(graph, strategy).plan(context));
         if (plan.derived().isEmpty()) {
           logNothingToDerive("selective run");
           return MigrationReport.nothingToDo(
-              SelectiveOutcome.clean(settings.mode()), timer.statistics());
+              SelectiveOutcome.clean(settings.mode(), dirty.report(Map.of())), timer.statistics());
         }
 
         Set<URI> sourceUris =
-            Set.copyOf(classifyResources(vsum, plan, presentNodes, folder).snapshotUris());
+            timer.time(
+                "classify",
+                () ->
+                    Set.copyOf(classifyResources(vsum, plan, presentNodes, folder).snapshotUris()));
         Repropagation repropagation =
             repropagateInView(vsum, dirty.matchers(), sourceUris, folder, scratch, timer);
+        SelectiveOutcome selective =
+            SelectiveOutcome.applied(
+                settings.mode(),
+                dirty.report(repropagation.matchesPerRule()),
+                repropagation.affected(),
+                repropagation.leftOut(),
+                repropagation.sourceElements(),
+                repropagation.modelElements());
         if (!repropagation.happened()) {
           return selectiveReport(
-              plan, interaction, dirty.ids(), 0, PreservationOutcome.skipped(), timer);
+              plan,
+              context.selection(),
+              interaction,
+              selective,
+              PreservationOutcome.skipped(),
+              timer);
         }
 
         PreservationOutcome preservation =
             preserveUserContentIfEnabled(
                 folder, vsum, repropagation.preMigrationFolder(), plan, timer);
-        refreshSerializedForms(vsum);
+        timer.time("refresh", () -> refreshSerializedForms(vsum));
         return selectiveReport(
             plan,
+            context.selection(),
             interaction,
-            dirty.ids(),
-            repropagation.affectedCount(),
+            selective,
             recordPreservation(folder, repropagation.preMigrationFolder(), preservation),
             timer);
       } finally {
@@ -400,25 +460,50 @@ public class MigrationRunner {
 
   private Repropagation repropagateInView(
       InternalVirtualModel vsum,
-      List<ConsistencyRuleTriggerMatcher> matchers,
+      List<DirtyMatcher> matchers,
       Set<URI> sourceUris,
       Path folder,
       ScratchArea scratch,
       PhaseTimer timer) {
-    dropResolutionCaches(vsum);
-    NotRepropagated notRepropagated = NotRepropagated.of(vsum, sourceUris, folder, adapters);
-    try (View view = Vsums.openViewOfAll(vsum, "selective-repropagation")) {
+    NotRepropagated notRepropagated =
+        timer.time(
+            "left-out",
+            () -> {
+              dropResolutionCaches(vsum);
+              return NotRepropagated.of(vsum, sourceUris, folder, adapters);
+            });
+    int modelElements = countModelElements(vsum, folder);
+    @SuppressWarnings("resource")
+    View view =
+        timer.time(
+            "view-open",
+            () ->
+                Vsums.openViewOf(
+                    vsum,
+                    "selective-repropagation",
+                    root -> isOwnedByResourceIn(root, sourceUris)));
+    AutoCloseable closing = () -> timer.timeViewClose(view);
+    try (closing) {
       CommittableView committable = view.withChangeRecordingTrait();
-      List<EObject> affected =
+      AffectedElements.Selection selection =
           timer.time(
               "selection",
               () -> affectedSourceElements(committable, matchers, sourceUris, notRepropagated));
+      List<EObject> affected =
+          selection.elements().stream().map(AffectedElements.Selected::element).toList();
       requireNoAffectedRoots(affected);
+      List<SelectiveOutcome.AffectedElement> described = describe(selection.elements());
       if (affected.isEmpty()) {
         log.info(
             "The dirty rules match no source elements; the persisted registry is left unchanged"
                 + " and a rerun will re-detect them.");
-        return Repropagation.none();
+        return new Repropagation(
+            described,
+            selection.matchesPerRule(),
+            selection.probedElements(),
+            notRepropagated.leftOut(),
+            modelElements,
+            null);
       }
 
       log.info("Repropagating {} affected source element(s) in place", affected.size());
@@ -440,12 +525,33 @@ public class MigrationRunner {
           adapters,
           folder,
           timer);
-      return new Repropagation(affected.size(), preMigrationFolder);
+      return new Repropagation(
+          described,
+          selection.matchesPerRule(),
+          selection.probedElements(),
+          notRepropagated.leftOut(),
+          modelElements,
+          preMigrationFolder);
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
       throw new IllegalStateException("Selective repropagation failed", e);
     }
+  }
+
+  private int countModelElements(InternalVirtualModel vsum, Path folder) {
+    int count = 0;
+    for (Resource resource : List.copyOf(vsum.getViewSourceModels())) {
+      if (resource.getURI() == null || !adapters.isMigratedModel(resource.getURI(), folder)) {
+        continue;
+      }
+
+      for (Iterator<EObject> it = resource.getAllContents(); it.hasNext(); it.next()) {
+        count++;
+      }
+    }
+
+    return count;
   }
 
   private void dropResolutionCaches(InternalVirtualModel vsum) {
@@ -482,35 +588,41 @@ public class MigrationRunner {
 
   private MigrationReport selectiveReport(
       DominancePlan plan,
+      SourceSelection selection,
       DetectingUserInteraction interaction,
-      SortedSet<ConsistencyRuleId> dirtyIds,
-      int affectedCount,
+      SelectiveOutcome selective,
       PreservationOutcome preservation,
       PhaseTimer timer) {
     return new MigrationReport(
-        affectedCount > 0,
+        selective.affectedElementCount() > 0,
         plan.sources(),
         plan.derived(),
+        selection,
         interaction.getRequestedInteractions(),
         SourceUpdateOutcome.skipped(),
-        SelectiveOutcome.applied(settings.mode(), dirtyIds.size(), affectedCount),
+        selective,
         preservation,
         timer.statistics());
   }
 
-  private Optional<PreparedMigration> prepareMigration(Path folder, ScratchArea scratch) {
+  private Optional<PreparedMigration> prepareMigration(
+      Path folder, ScratchArea scratch, PhaseTimer timer) {
     InternalVirtualModel sourceVsum =
-        Vsums.build(folder, specifications.createSpecifications(), new DetectingUserInteraction());
+        timer.time(
+            "load",
+            () ->
+                Vsums.build(
+                    folder, specifications.createSpecifications(), new DetectingUserInteraction()));
+    LoadedSource source = timer.time("roots", () -> loadSource(sourceVsum));
     try {
-      List<EObject> roots = Vsums.readRoots(sourceVsum);
-      if (roots.isEmpty()) {
+      Map<String, List<EObject>> rootsByNsUri = source.rootsByNsUri();
+      if (rootsByNsUri.isEmpty()) {
         log.warn(
             "No models found in {}, nothing to migrate. Persist a VSUM there first.",
             folder.toAbsolutePath());
         return Optional.empty();
       }
 
-      Map<String, List<EObject>> rootsByNsUri = ModelGroups.byNsUri(roots);
       log.info("Present models by metamodel: {}", rootsByNsUri.keySet());
       Set<MetamodelNode> presentNodes = presentNodes(rootsByNsUri.keySet());
       if (presentNodes.isEmpty()) {
@@ -520,19 +632,16 @@ public class MigrationRunner {
                 + " - point the migration at a jar whose propagations match these metamodels.");
       }
 
-      TrialMigration trialMigration =
-          new TrialMigration(specifications, adapters, interactionFallback, scratch, folder);
+      RunnerContext context =
+          new RunnerContext(
+              graph,
+              source.vsum(),
+              presentNodes,
+              adapters,
+              new TrialMigration(specifications, adapters, interactionFallback, scratch, folder),
+              folder);
       DominancePlan plan =
-          new MigrationPlanner(graph, strategy)
-              .plan(
-                  new RunnerContext(
-                      graph,
-                      sourceVsum,
-                      presentNodes,
-                      rootsByNsUri,
-                      adapters,
-                      trialMigration,
-                      folder));
+          timer.time("dominance", () -> new MigrationPlanner(graph, strategy).plan(context));
       log.info("Sources of truth (dominant first): {}", shortNames(plan.sources()));
       if (plan.derived().isEmpty()) {
         logNothingToDerive("full migration");
@@ -540,19 +649,54 @@ public class MigrationRunner {
       }
 
       log.info("Re-deriving {} from the sources in place", shortNames(plan.derived()));
-      ResourceClassification classification =
-          classifyResources(sourceVsum, plan, presentNodes, folder);
-      ModelSnapshot snapshot = ModelSnapshot.of(classification.snapshotUris(), adapters, folder);
-      Path preMigrationFolder = copyPreMigrationState(folder, scratch);
       return Optional.of(
-          new PreparedMigration(
-              plan,
-              snapshot,
-              preMigrationFolder,
-              copiesOf(preMigrationFolder, folder, classification.derivedFileUris()),
-              classification.allModelFileUris()));
+          timer.time(
+              "snapshot",
+              () -> snapshotSources(folder, scratch, source.vsum(), plan, presentNodes, context)));
     } finally {
-      sourceVsum.dispose();
+      source.vsum().dispose();
+    }
+  }
+
+  private PreparedMigration snapshotSources(
+      Path folder,
+      ScratchArea scratch,
+      InternalVirtualModel sourceVsum,
+      DominancePlan plan,
+      Set<MetamodelNode> presentNodes,
+      RunnerContext context) {
+    ResourceClassification classification =
+        classifyResources(sourceVsum, plan, presentNodes, folder);
+    ModelSnapshot snapshot = ModelSnapshot.of(classification.snapshotUris(), adapters, folder);
+    Path preMigrationFolder = copyPreMigrationState(folder, scratch);
+    Optional<Path> reusableTrial =
+        plan.sources().size() == 1 ? context.trialFolderOf(plan.dominant()) : Optional.empty();
+    return new PreparedMigration(
+        plan,
+        context.selection(),
+        reusableTrial,
+        snapshot,
+        preMigrationFolder,
+        copiesOf(preMigrationFolder, folder, classification.derivedFileUris()),
+        classification.allModelFileUris());
+  }
+
+  private long derivedChangeCount(Path folder, PreparedMigration prepared) {
+    try {
+      List<Resource> before =
+          ModelStates.loadRebased(
+              prepared.oldDerivedFiles(), prepared.preMigrationFolder(), folder, adapters);
+      List<Resource> after =
+          ModelStates.ownedBy(
+              ModelStates.load(folder, adapters),
+              ModelStates.ownedByAny(prepared.plan().derived()));
+      long count = ModelStates.changeCount(new ModelStateDiff(), adapters, before, after);
+      log.info(
+          "Counted {} change(s) between the old derived models and the re-derived ones", count);
+      return count;
+    } catch (RuntimeException e) {
+      log.warn("The changes of the re-derivation could not be counted: {}", e.getMessage(), e);
+      return SourceSelection.NOT_MEASURED;
     }
   }
 
@@ -564,25 +708,38 @@ public class MigrationRunner {
       PhaseTimer timer) {
     deleteModelFiles(prepared.modelFilesToDelete());
     clearVsumMetadata(folder);
+    boolean adopted = prepared.reusableTrial().isPresent();
+    if (adopted) {
+      timer.time("reuse-trial", () -> adoptTrial(prepared.reusableTrial().get(), folder));
+    }
+
     DetectingUserInteraction reDerivationInteraction =
         new DetectingUserInteraction(interactionFallback);
     InternalVirtualModel targetVsum =
         Vsums.build(folder, specifications.createSpecifications(), reDerivationInteraction);
+    SourceSelection selection = prepared.selection();
     SourceUpdateOutcome sourceUpdate;
     PreservationOutcome preservation;
     try {
-      timer.time(
-          "re-derive",
-          () -> new Replayer(adapters).replayInto(targetVsum, prepared.sourceSnapshot()));
-      log.info("In-place re-derivation complete.");
+      if (!adopted) {
+        timer.time(
+            "re-derive",
+            () -> new Replayer(adapters).replayInto(targetVsum, prepared.sourceSnapshot()));
+        log.info("In-place re-derivation complete.");
+      }
+      selection =
+          selection.withChangeCount(
+              timer.time("change-count", () -> derivedChangeCount(folder, prepared)));
       sourceUpdate =
           timer.time(
               "source-update", () -> updateSourcesIfEnabled(folder, targetVsum, prepared, scratch));
       preservation =
           preserveUserContentIfEnabled(
               folder, targetVsum, prepared.preMigrationFolder(), prepared.plan(), timer);
-      refreshSerializedForms(targetVsum);
+      timer.time("refresh", () -> refreshSerializedForms(targetVsum));
       logRequestedInteractions(reDerivationInteraction);
+    } catch (RuntimeException e) {
+      throw new MigrationFailure(prepared.plan(), selection, e);
     } finally {
       targetVsum.dispose();
     }
@@ -591,6 +748,7 @@ public class MigrationRunner {
         true,
         prepared.plan().sources(),
         prepared.plan().derived(),
+        selection,
         reDerivationInteraction.getRequestedInteractions(),
         sourceUpdate,
         selective,
@@ -611,7 +769,7 @@ public class MigrationRunner {
     return timer.time(
         "preserve",
         () ->
-            PreservationPass.run(
+            preserveOrReport(
                 new PreservationContext(
                     targetVsum,
                     folder,
@@ -620,6 +778,19 @@ public class MigrationRunner {
                     derivedRootPredicate(plan),
                     settings.preservation(),
                     settings.askOnAmbiguity() ? interactionFallback : null)));
+  }
+
+  private PreservationOutcome preserveOrReport(PreservationContext context) {
+    try {
+      return PreservationPass.run(context);
+    } catch (RuntimeException e) {
+      String reason = e.getMessage() == null ? e.toString() : e.getMessage();
+      log.warn(
+          "The preservation pass did not complete; the re-derived models are kept as they are: {}",
+          reason,
+          e);
+      return PreservationOutcome.failed(settings.preservation(), reason);
+    }
   }
 
   private SourceUpdateOutcome updateSourcesIfEnabled(
@@ -660,26 +831,20 @@ public class MigrationRunner {
     Set<URI> snapshotUris = new LinkedHashSet<>();
     Set<URI> derivedUris = new LinkedHashSet<>();
     Set<URI> allFileUris = new LinkedHashSet<>();
-    try (View view = Vsums.openViewOfAll(vsum, "classify-resources")) {
-      for (EObject root : view.getRootObjects()) {
-        Resource resource = root.eResource();
-        if (resource == null || !adapters.isMigratedModel(resource.getURI(), vsumFolder)) {
-          continue;
-        }
-
-        URI uri = resource.getURI();
-        allFileUris.add(uri);
-        MetamodelNode owner = owningNode(presentNodes, root);
-        if (owner == null || plan.sources().contains(owner)) {
-          snapshotUris.add(uri);
-        } else {
-          derivedUris.add(uri);
-        }
+    for (EObject root : Vsums.liveRoots(vsum)) {
+      Resource resource = root.eResource();
+      if (resource == null || !adapters.isMigratedModel(resource.getURI(), vsumFolder)) {
+        continue;
       }
-    } catch (RuntimeException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new IllegalStateException("Failed to classify the VSUM's resources", e);
+
+      URI uri = resource.getURI();
+      allFileUris.add(uri);
+      MetamodelNode owner = owningNode(presentNodes, root);
+      if (owner == null || plan.sources().contains(owner)) {
+        snapshotUris.add(uri);
+      } else {
+        derivedUris.add(uri);
+      }
     }
 
     snapshotUris.removeAll(derivedUris);
@@ -687,10 +852,42 @@ public class MigrationRunner {
         List.copyOf(snapshotUris), List.copyOf(derivedUris), List.copyOf(allFileUris));
   }
 
+  private record CurrentRules(
+      RuleHashRegistry registry, List<ChangePropagationSpecification> specifications) {}
+
+  private record LoadedSource(InternalVirtualModel vsum, Map<String, List<EObject>> rootsByNsUri) {}
+
   private record DirtyRules(
-      SortedSet<ConsistencyRuleId> ids, List<ConsistencyRuleTriggerMatcher> matchers) {
+      RuleHashDiff diff,
+      SortedSet<ConsistencyRuleId> ids,
+      List<DirtyMatcher> matchers,
+      int persistedCount,
+      int currentCount,
+      List<ChangePropagationSpecification> specifications) {
     boolean isEmpty() {
       return ids.isEmpty();
+    }
+
+    SelectiveOutcome.RuleDiff report(Map<ConsistencyRuleId, Integer> matchesPerRule) {
+      List<SelectiveOutcome.DirtyRule> dirty = new ArrayList<>();
+      for (ConsistencyRuleId id : ids) {
+        dirty.add(
+            new SelectiveOutcome.DirtyRule(
+                id.value(), kindOf(id), matchesPerRule.getOrDefault(id, 0)));
+      }
+
+      return new SelectiveOutcome.RuleDiff(persistedCount, currentCount, List.copyOf(dirty));
+    }
+
+    private SelectiveOutcome.DirtyRule.Kind kindOf(ConsistencyRuleId id) {
+      if (diff.added().contains(id)) {
+        return SelectiveOutcome.DirtyRule.Kind.ADDED;
+      }
+      if (diff.removed().contains(id)) {
+        return SelectiveOutcome.DirtyRule.Kind.REMOVED;
+      }
+
+      return SelectiveOutcome.DirtyRule.Kind.CHANGED;
     }
   }
 }

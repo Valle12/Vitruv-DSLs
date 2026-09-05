@@ -64,14 +64,14 @@ public final class CounterpartIndex {
       Predicate<EObject> derivedRoot,
       Set<EObject> claimed,
       AmbiguityResolver resolver) {
-    for (EObject oldSource : oldState.partnersOf(oldElement)) {
-      EObject newSource = sameSourceElementIn(newState, oldSource, oldState);
+    for (VsumState.Partner oldLink : oldState.partnersOf(oldElement)) {
+      EObject newSource = sameSourceElementIn(newState, oldLink.element(), oldState);
       if (newSource == null) {
         continue;
       }
 
       List<EObject> candidates =
-          derivedPartners(newState, newSource, derivedRoot).stream()
+          derivedPartners(newState, newSource, derivedRoot, oldLink.tag()).stream()
               .filter(partner -> !claimed.contains(partner))
               .toList();
       Optional<EObject> counterpart = pickCounterpart(candidates, oldElement, resolver);
@@ -96,8 +96,10 @@ public final class CounterpartIndex {
   }
 
   private static List<EObject> derivedPartners(
-      VsumState newState, EObject newSource, Predicate<EObject> derivedRoot) {
+      VsumState newState, EObject newSource, Predicate<EObject> derivedRoot, String tag) {
     return newState.partnersOf(newSource).stream()
+        .filter(partner -> partner.tag().equals(tag))
+        .map(VsumState.Partner::element)
         .filter(partner -> derivedRoot.test(EcoreUtil.getRootContainer(partner)))
         .toList();
   }

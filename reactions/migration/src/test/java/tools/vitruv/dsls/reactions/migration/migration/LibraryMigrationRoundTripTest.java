@@ -1,5 +1,7 @@
 package tools.vitruv.dsls.reactions.migration.migration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static tools.vitruv.dsls.reactions.migration.migration.LibraryCliFixture.permissiveInteraction;
 
@@ -21,7 +23,9 @@ import tools.vitruv.applications.umljava.UmlToJavaChangePropagationSpecification
 import tools.vitruv.applications.util.temporary.java.JavaSetup;
 import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 import tools.vitruv.change.testutils.TestUserInteraction;
+import tools.vitruv.dsls.reactions.migration.TestSpecifications;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
+import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 import tools.vitruv.dsls.reactions.migration.graph.PropagationGraph;
 import tools.vitruv.dsls.reactions.migration.spec.SpecificationSource;
 import tools.vitruv.dsls.reactions.migration.strategy.DominanceStrategy;
@@ -139,6 +143,34 @@ class LibraryMigrationRoundTripTest {
     MigrationReport report = migrate(new FewestChangesDominance());
 
     assertTrue(report.migrated());
+    SourceSelection selection = report.selection();
+    assertEquals(2, selection.trials().size(), "both metamodels reach each other, so both are tried");
+    assertTrue(
+        selection.trials().stream().allMatch(SourceSelection.Trial::completed),
+        "every trial completes: " + selection.trials());
+    MetamodelNode dominant = report.sources().getFirst();
+    long dominantTrial = selection.trialOf(dominant).orElseThrow().changeCount();
+    for (SourceSelection.Trial trial : selection.trials()) {
+      assertTrue(
+          dominantTrial <= trial.changeCount(),
+          "the dominant proposes the fewest changes: " + selection.trials());
+    }
+    assertTrue(
+        dominant.owns(TestSpecifications.UML),
+        "re-deriving Java from UML changes less than re-deriving UML from Java, which the rules"
+            + " do lossily: "
+            + selection.trials());
+    assertEquals(
+        dominantTrial,
+        selection.changeCount(),
+        "the trial predicts what the re-derivation then changes");
+    assertTrue(
+        report.statistics().phaseNames().contains("reuse-trial"),
+        "the winning trial is adopted instead of re-deriving again: "
+            + report.statistics().phaseNames());
+    assertFalse(
+        report.statistics().phaseNames().contains("re-derive"),
+        "nothing is re-derived twice: " + report.statistics().phaseNames());
     ModelStructure.reportDeviations(
         "the Java model after a fewest changes migration",
         javaBefore,

@@ -5,22 +5,23 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.util.EcoreUtil.Copier;
 
 final class ReferenceRebinder {
-  private final Function<EObject, EObject> toMigratedElement;
+  private final UnaryOperator<EObject> toMigratedElement;
   private final Path oldFolder;
   private final Copier copier;
   private final Map<EObject, EObject> prunedCopies;
   private final Set<EObject> liveCopies;
 
   ReferenceRebinder(
-      Function<EObject, EObject> toMigratedElement,
+      UnaryOperator<EObject> toMigratedElement,
       Path oldFolder,
       Copier copier,
       Map<EObject, EObject> prunedCopies) {
@@ -33,49 +34,75 @@ final class ReferenceRebinder {
     this.liveCopies.removeAll(prunedCopies.keySet());
   }
 
-  boolean rebind(EObject copyRoot) {
-    if (!rebindElement(copyRoot)) {
-      return false;
+  boolean rebindFailed(EObject copyRoot) {
+    if (rebindElementFailed(copyRoot)) {
+      return true;
     }
 
     Iterator<EObject> it = copyRoot.eAllContents();
     while (it.hasNext()) {
-      if (!rebindElement(it.next())) {
-        return false;
+      if (rebindElementFailed(it.next())) {
+        return true;
       }
     }
 
-    return true;
+    return false;
   }
 
-  @SuppressWarnings("unchecked")
-  private boolean rebindElement(EObject element) {
+  private boolean rebindElementFailed(EObject element) {
     for (EReference reference : element.eClass().getEAllReferences()) {
       if (reference.isContainment() || !Elements.isTransplantable(reference)) {
         continue;
       }
 
-      if (reference.isMany()) {
-        List<EObject> targets = (List<EObject>) element.eGet(reference);
-        for (int i = 0; i < targets.size(); i++) {
-          EObject rebound = rebindTarget(targets.get(i));
-          if (rebound == null) {
-            return false;
-          }
-
-          targets.set(i, rebound);
-        }
-      } else if (element.eGet(reference) instanceof EObject target) {
-        EObject rebound = rebindTarget(target);
-        if (rebound == null) {
-          return false;
-        }
-
-        element.eSet(reference, rebound);
+      if (rebindReferenceFailed(element, reference)) {
+        return true;
       }
     }
 
-    return true;
+    return false;
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean rebindReferenceFailed(EObject element, EReference reference) {
+    if (reference.isMany()) {
+      return rebindTargetsFailed((List<EObject>) element.eGet(reference));
+    }
+
+    if (!(element.eGet(reference) instanceof EObject target)) {
+      return false;
+    }
+
+    EObject rebound = rebindTarget(target);
+    if (rebound == null) {
+      return true;
+    }
+
+    element.eSet(reference, rebound);
+    return false;
+  }
+
+  private boolean rebindTargetsFailed(List<EObject> targets) {
+    for (ListIterator<EObject> targetsToRebind = targets.listIterator();
+        targetsToRebind.hasNext(); ) {
+      EObject current = targetsToRebind.next();
+      EObject rebound = rebindTarget(current);
+      if (rebound == null) {
+        return true;
+      }
+
+      if (rebound == current) {
+        continue;
+      }
+
+      if (targets.contains(rebound)) {
+        targetsToRebind.remove();
+      } else {
+        targetsToRebind.set(rebound);
+      }
+    }
+
+    return false;
   }
 
   EObject rebindTarget(EObject target) {

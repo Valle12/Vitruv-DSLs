@@ -83,7 +83,7 @@ class BlockMapperTest {
     assertFalse(umlClassToJavaClassReactions.isEmpty());
     assertTrue(
         umlClassToJavaClassReactions
-            .get(0)
+            .getFirst()
             .contains("after element uml::Class inserted in uml::Package[packagedElement]"));
     Map<String, String> routines = result.codeBlocks().routines();
     assertTrue(routines.size() > 1);
@@ -116,7 +116,7 @@ class BlockMapperTest {
     assertFalse(umlClassToJavaClassReactions.isEmpty());
     assertTrue(
         umlClassToJavaClassReactions
-            .get(0)
+            .getFirst()
             .contains("after element uml::Class inserted in uml::Package[packagedElement]"));
     Map<String, String> routines = result.codeBlocks().routines();
     assertEquals(1, routines.size());

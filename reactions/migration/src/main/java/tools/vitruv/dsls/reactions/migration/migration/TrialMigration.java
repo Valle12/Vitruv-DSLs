@@ -2,10 +2,9 @@ package tools.vitruv.dsls.reactions.migration.migration;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
+import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EObject;
 import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
@@ -25,10 +24,7 @@ public class TrialMigration {
   private final Path realFolder;
   private final ModelStateDiff diff = new ModelStateDiff();
 
-  public long changeCountFor(
-      MetamodelNode candidate,
-      Map<String, List<EObject>> currentRootsByNsUri,
-      List<URI> candidateResourceUris) {
+  public Outcome run(MetamodelNode candidate, List<URI> candidateResourceUris) {
     Path trialFolder = scratch.newFolder("trial");
     ModelSnapshot snapshot =
         ModelSnapshot.of(candidateResourceUris, adapters, realFolder)
@@ -40,29 +36,20 @@ public class TrialMigration {
             new DetectingUserInteraction(interactionFallback));
     try {
       new Replayer(adapters).replayInto(trialVsum, snapshot);
-      Map<String, List<EObject>> regenerated = ModelGroups.byNsUri(Vsums.readRoots(trialVsum));
-      return proposedChangesForOtherNodes(candidate, currentRootsByNsUri, regenerated);
     } finally {
       trialVsum.dispose();
     }
+
+    Predicate<String> ownedByCandidate = candidate::owns;
+    long changeCount =
+        ModelStates.changeCount(
+            diff,
+            adapters,
+            ModelStates.notOwnedBy(ModelStates.load(realFolder, adapters), ownedByCandidate),
+            ModelStates.notOwnedBy(
+                ModelStates.loadRebased(trialFolder, realFolder, adapters), ownedByCandidate));
+    return new Outcome(changeCount, trialFolder);
   }
 
-  private long proposedChangesForOtherNodes(
-      MetamodelNode candidate,
-      Map<String, List<EObject>> current,
-      Map<String, List<EObject>> regenerated) {
-    long changes = 0;
-    for (Map.Entry<String, List<EObject>> entry : current.entrySet()) {
-      if (candidate.owns(entry.getKey())) {
-        continue;
-      }
-
-      changes +=
-          diff.changeCount(
-              ModelGroups.resourcesOf(entry.getValue()),
-              ModelGroups.resourcesOf(regenerated.getOrDefault(entry.getKey(), List.of())));
-    }
-
-    return changes;
-  }
+  public record Outcome(long changeCount, Path folder) {}
 }

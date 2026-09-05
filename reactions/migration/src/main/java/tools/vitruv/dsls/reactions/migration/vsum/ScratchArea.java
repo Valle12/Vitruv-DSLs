@@ -13,8 +13,10 @@ public final class ScratchArea implements AutoCloseable {
   private int folderCounter;
 
   private static void delete(Path path) {
-    if (!path.toFile().delete()) {
-      log.warn("Could not delete scratch file {}", path);
+    try {
+      Files.delete(path);
+    } catch (IOException e) {
+      log.warn("Could not delete scratch file {}", path, e);
     }
   }
 

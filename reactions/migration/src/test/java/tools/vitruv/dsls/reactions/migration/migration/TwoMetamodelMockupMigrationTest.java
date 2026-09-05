@@ -116,7 +116,7 @@ class TwoMetamodelMockupMigrationTest {
     return new ResourceSetImpl()
         .getResource(URI.createFileURI(modelFile.toString()), true)
         .getContents()
-        .get(0);
+        .getFirst();
   }
 
   @Test
@@ -129,7 +129,7 @@ class TwoMetamodelMockupMigrationTest {
     assertTrue(report.migrated());
     assertEquals(1, report.sources().size());
     assertEquals(1, report.derived().size());
-    assertTrue(report.sources().get(0).owns(uml_mockup.Uml_mockupPackage.eNS_URI));
+    assertTrue(report.sources().getFirst().owns(uml_mockup.Uml_mockupPackage.eNS_URI));
     assertShopUmlModel(folder);
     assertShopPcmModel(folder);
     assertVsumMetadataRegenerated(folder);
@@ -144,7 +144,7 @@ class TwoMetamodelMockupMigrationTest {
     MigrationReport report = migrate(folder, new ExplicitDominance("pcm_mockup"));
 
     assertTrue(report.migrated());
-    assertTrue(report.sources().get(0).owns(pcm_mockup.Pcm_mockupPackage.eNS_URI));
+    assertTrue(report.sources().getFirst().owns(pcm_mockup.Pcm_mockupPackage.eNS_URI));
     assertShopUmlModel(folder);
     assertShopPcmModel(folder);
     assertVsumReloads(folder);

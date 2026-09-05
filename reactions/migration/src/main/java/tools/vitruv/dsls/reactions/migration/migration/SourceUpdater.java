@@ -1,8 +1,5 @@
 package tools.vitruv.dsls.reactions.migration.migration;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,7 +22,6 @@ import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 import tools.vitruv.dsls.reactions.migration.interaction.DetectingUserInteraction;
-import tools.vitruv.dsls.reactions.migration.preservation.ModelFiles;
 import tools.vitruv.dsls.reactions.migration.spec.SpecificationSource;
 import tools.vitruv.dsls.reactions.migration.vsum.ModelSnapshot;
 import tools.vitruv.dsls.reactions.migration.vsum.ScratchArea;
@@ -42,8 +38,7 @@ class SourceUpdater {
   private final AdapterRegistry adapters;
   private final InteractionResultProvider interactionFallback;
   private final int maxRounds;
-  private final ModelStateDiff diff =
-      new ModelStateDiff(new DefaultStateBasedChangeResolutionStrategy(UseIdentifiers.NEVER));
+  private final ModelStateDiff diff = new ModelStateDiff();
 
   private final List<String> retracted = new ArrayList<>();
 
@@ -62,17 +57,9 @@ class SourceUpdater {
     return URI.createFileURI(vsumBase.resolve(filesBase.relativize(file).toString()).toString());
   }
 
-  private static boolean ownedByDerivedNode(Resource resource, List<MetamodelNode> derivedNodes) {
-    return resource.getContents().stream()
-        .map(root -> root.eClass().getEPackage().getNsURI())
-        .anyMatch(nsUri -> derivedNodes.stream().anyMatch(node -> node.owns(nsUri)));
-  }
-
   private static List<Resource> sourceOwned(
       List<Resource> resources, List<MetamodelNode> derivedNodes) {
-    return resources.stream()
-        .filter(resource -> !ownedByDerivedNode(resource, derivedNodes))
-        .toList();
+    return ModelStates.notOwnedBy(resources, ModelStates.ownedByAny(derivedNodes));
   }
 
   private static boolean scratchStateMatchesMetamodels(
@@ -155,8 +142,8 @@ class SourceUpdater {
       }
 
       List<Resource> scratchState =
-          sourceOwned(loadModelStateRebasedTo(scratchFolder, realFolder), derivedNodes);
-      List<Resource> realState = sourceOwned(loadModelState(realFolder), derivedNodes);
+          sourceOwned(ModelStates.loadRebased(scratchFolder, realFolder, adapters), derivedNodes);
+      List<Resource> realState = sourceOwned(ModelStates.load(realFolder, adapters), derivedNodes);
       long delta = SourceStateMerge.count(realState, scratchState).total();
       Optional<SourceUpdateOutcome> finished =
           roundOutcome(round, delta, previousDelta, scratchState, realState);
@@ -358,38 +345,6 @@ class SourceUpdater {
     return List.copyOf(uris);
   }
 
-  private List<Resource> loadModelState(Path folder) {
-    ResourceSet resourceSet = adapters.newResourceSet();
-    return ModelFiles.in(folder, adapters).stream()
-        .map(
-            file -> {
-              Resource resource = resourceSet.getResource(URI.createFileURI(file.toString()), true);
-              adapters.adapterFor(resource).normalizeLoadedResource(resource);
-              return resource;
-            })
-        .toList();
-  }
-
-  private List<Resource> loadModelStateRebasedTo(Path folder, Path uriBaseFolder) {
-    ResourceSet resourceSet = adapters.newResourceSet();
-    List<Resource> resources = new ArrayList<>();
-    for (Path file : ModelFiles.in(folder, adapters)) {
-      URI rebased =
-          URI.createFileURI(uriBaseFolder.resolve(folder.relativize(file).toString()).toString());
-      Resource resource = resourceSet.createResource(rebased);
-      try (var content = Files.newInputStream(file)) {
-        resource.load(content, resourceSet.getLoadOptions());
-      } catch (IOException e) {
-        throw new UncheckedIOException(e);
-      }
-
-      adapters.adapterFor(resource).normalizeLoadedResource(resource);
-      resources.add(resource);
-    }
-
-    return resources;
-  }
-
   private void logDeltaDetails(List<Resource> realState, List<Resource> scratchState) {
     Map<String, Resource> realByName = new LinkedHashMap<>();
     realState.forEach(r -> realByName.put(r.getURI().lastSegment(), r));
@@ -400,11 +355,13 @@ class SourceUpdater {
         continue;
       }
 
-      diff.between(scratchResource, realResource)
-          .getEChanges()
-          .forEach(
-              change ->
-                  log.debug("  delta[{}]: {}", scratchResource.getURI().lastSegment(), change));
+      String name = scratchResource.getURI().lastSegment();
+      try {
+        diff.changesBetween(scratchResource, realResource)
+            .forEach(change -> log.debug("  delta[{}] change: {}", name, change));
+      } catch (RuntimeException e) {
+        log.debug("  delta[{}] listing failed: {}", name, e.getMessage());
+      }
     }
   }
 }

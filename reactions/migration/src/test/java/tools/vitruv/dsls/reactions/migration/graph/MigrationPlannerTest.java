@@ -163,6 +163,6 @@ class MigrationPlannerTest {
 
     DominancePlan plan = new MigrationPlanner(graph, reachability).plan(context(graph, present));
 
-    assertSame(plan.sources().get(0), plan.dominant(), "the dominant heads the source order");
+    assertSame(plan.sources().getFirst(), plan.dominant(), "the dominant heads the source order");
   }
 }

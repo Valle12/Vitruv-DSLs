@@ -1,0 +1,23 @@
+import "http://example.org/alpha" as alpha
+import "http://example.org/beta" as beta
+
+reactions: caller
+in reaction to changes in alpha
+execute actions in beta
+
+import routines helpers // shared helpers
+
+@feature(type = "featOne")
+reaction SomethingInserted {
+	after element alpha::Thing inserted as root
+	call {
+		helperOne(newValue)
+		localOnly(newValue)
+	}
+}
+
+routine localOnly(alpha::Thing thing) {
+	update {
+		thing.toString()
+	}
+}

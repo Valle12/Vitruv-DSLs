@@ -1,0 +1,30 @@
+import "http://example.org/alpha" as alpha
+import "http://example.org/beta" as beta
+
+reactions: helpers
+in reaction to changes in alpha
+execute actions in beta
+
+routine helperOne(alpha::Thing thing) {
+	update {
+		helperTwo(thing)
+	}
+}
+
+routine helperTwo(alpha::Thing thing) {
+	update {
+		thing.toString()
+	}
+}
+
+routine unusedHelper(alpha::Thing thing) {
+	update {
+		thing.toString()
+	}
+}
+
+routine localOnly(alpha::Thing thing) {
+	update {
+		thing.hashCode()
+	}
+}

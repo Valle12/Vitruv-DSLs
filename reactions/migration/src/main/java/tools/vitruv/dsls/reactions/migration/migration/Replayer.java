@@ -22,8 +22,8 @@ public class Replayer {
       CommittableView committable, Map<URI, List<EObject>> rootsByUri) {
     for (Map.Entry<URI, List<EObject>> entry : rootsByUri.entrySet()) {
       List<EObject> roots = entry.getValue();
-      committable.registerRoot(roots.get(0), entry.getKey());
-      Resource resource = roots.get(0).eResource();
+      committable.registerRoot(roots.getFirst(), entry.getKey());
+      Resource resource = roots.getFirst().eResource();
       for (int i = 1; i < roots.size(); i++) {
         resource.getContents().add(roots.get(i));
       }

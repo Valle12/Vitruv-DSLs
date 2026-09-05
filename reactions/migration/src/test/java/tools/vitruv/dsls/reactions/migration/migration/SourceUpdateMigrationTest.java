@@ -86,7 +86,16 @@ class SourceUpdateMigrationTest {
     assertTrue(report.sourceUpdate().converged(), "the backflow must reach a fixed point");
     assertTrue(report.sourceUpdate().rounds() >= 1, "one round must have been applied");
     assertEquals(
-        List.of("prepare", "re-derive", "source-update", "preserve"),
+        List.of(
+            "load",
+            "roots",
+            "dominance",
+            "snapshot",
+            "re-derive",
+            "change-count",
+            "source-update",
+            "preserve",
+            "refresh"),
         report.statistics().phaseNames());
     assertEquals(Set.of("Order", "LegacyBilling"), umlClassNames(folder));
     assertEquals(Set.of("Order", "LegacyBilling"), pcmComponentNames(folder));

@@ -21,7 +21,16 @@ public class ReactionsReader {
     Map<String, String> reactions = new HashMap<>();
 
     try (Stream<Path> paths = Files.list(dir)) {
-      paths.forEach(path -> reactions.putAll(readReactionsFiles(path)));
+      paths.forEach(
+          path -> {
+            if (Files.isDirectory(path)) {
+              reactions.putAll(readReactionsFiles(path));
+              return;
+            }
+
+            TextReader.readTextFile(path)
+                .ifPresent(content -> reactions.put(path.getFileName().toString(), content));
+          });
     } catch (IOException e) {
       log.error("Error reading reactions directory");
     }

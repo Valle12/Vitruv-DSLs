@@ -1,5 +1,6 @@
 package tools.vitruv.dsls.reactions.migration.strategy;
 
+import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -11,7 +12,7 @@ public final class FewestChangesDominance implements DominanceStrategy {
   private static Set<MetamodelNode> candidatesReachingAllPresent(DominanceContext context) {
     return context.presentNodes().stream()
         .filter(node -> context.graph().reachesAll(node, context.presentNodes()))
-        .collect(Collectors.toSet());
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private static Optional<Long> measuredChangeCount(
@@ -24,7 +25,8 @@ public final class FewestChangesDominance implements DominanceStrategy {
       log.warn(
           "Skipping candidate {}, trial migration did not complete: {}",
           candidate.shortName(),
-          e.getMessage());
+          e.getMessage(),
+          e);
       return Optional.empty();
     }
   }

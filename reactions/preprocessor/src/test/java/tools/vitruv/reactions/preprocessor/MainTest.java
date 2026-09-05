@@ -1,7 +1,10 @@
 package tools.vitruv.reactions.preprocessor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import lombok.SneakyThrows;
@@ -89,5 +92,49 @@ class MainTest {
     int exitCode = Main.run(args);
 
     assertEquals(0, exitCode);
+  }
+
+  @Test
+  @DisplayName("Test run with top-level files and shared routine imports")
+  @SneakyThrows
+  void test7() {
+    Path config =
+        Path.of(
+            Objects.requireNonNull(getClass().getClassLoader().getResource("mixedConfig.json"))
+                .toURI());
+    Path reactions =
+        Path.of(Objects.requireNonNull(getClass().getClassLoader().getResource("mixed")).toURI());
+    String[] args = new String[] {"-c", config.toString(), "-r", reactions.toString()};
+
+    int exitCode = Main.run(args);
+
+    assertEquals(0, exitCode);
+
+    Path outputDir = config.getParent().resolve("mixedConfig-reactions");
+
+    String aggregateContent = Files.readString(outputDir.resolve("Aggregate.reactions"));
+    assertEquals(Files.readString(reactions.resolve("Aggregate.reactions")), aggregateContent);
+
+    String callerContent = Files.readString(outputDir.resolve("alpha/Caller.reactions"));
+    assertTrue(callerContent.contains("reaction SomethingInserted"));
+    assertTrue(callerContent.contains("routine localOnly("));
+    assertFalse(callerContent.contains("@feature"));
+    assertFalse(callerContent.contains("routine helperOne("));
+
+    String helpersContent = Files.readString(outputDir.resolve("alpha/Helpers.reactions"));
+    assertTrue(helpersContent.contains("routine helperOne("));
+    assertTrue(helpersContent.contains("routine helperTwo("));
+    assertEquals(
+        helpersContent.indexOf("routine helperOne("),
+        helpersContent.lastIndexOf("routine helperOne("));
+    assertEquals(
+        helpersContent.indexOf("routine helperTwo("),
+        helpersContent.lastIndexOf("routine helperTwo("));
+    assertFalse(helpersContent.contains("unusedHelper"));
+    assertFalse(helpersContent.contains("localOnly"));
+
+    String qualifiedContent = Files.readString(outputDir.resolve("beta/Qualified.reactions"));
+    assertTrue(qualifiedContent.contains("reaction OtherInserted"));
+    assertFalse(qualifiedContent.contains("routine helperTwo("));
   }
 }

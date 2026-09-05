@@ -187,13 +187,13 @@ final class TransplantApplier {
       List<PendingCandidate> candidates, List<PendingOrphan> orphans, ReferenceRebinder rebinder) {
     Set<EObject> dropped = newIdentitySet();
     for (PendingCandidate pending : candidates) {
-      if (pending.copy != null && !rebinder.rebind(pending.copy)) {
+      if (pending.copy != null && rebinder.rebindFailed(pending.copy)) {
         dropCandidate(pending, null, dropped);
       }
     }
 
     for (PendingOrphan pending : orphans) {
-      if (pending.copies.stream().anyMatch(copy -> !rebinder.rebind(copy))) {
+      if (pending.copies.stream().anyMatch(rebinder::rebindFailed)) {
         dropOrphan(pending, "restoring the file", dropped);
       }
     }

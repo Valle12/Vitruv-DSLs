@@ -1,6 +1,9 @@
 package tools.vitruv.reactions.preprocessor.mapping;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.vitruv.reactions.preprocessor.model.BlockIndex;
@@ -12,9 +15,17 @@ public class BlockMapper {
   private static final char OPEN_CURLY = '{';
   private static final char CLOSE_CURLY = '}';
   private static final Pattern REACTION_PATTERN =
-      Pattern.compile("@feature[^\\n]*type\\s*=\\s*\"(.+)\"[^\\n]*\\s*(reaction)\\s*\\w+\\s*\\{");
+      Pattern.compile(
+          "@feature\\s*\\(\\s*type\\s*=\\s*\"([^\"\\n]+)\"[^)\\n]*\\)\\s*(reaction)\\s*\\w+\\s*\\{");
   private static final Pattern ROUTINE_PATTERN =
       Pattern.compile("(routine)\\s+(\\w+)\\s*\\([^)]*\\)\\s*\\{");
+  private static final Pattern FEATURE_HEADER_PATTERN =
+      Pattern.compile("@feature\\(type\\s*=\\s*\"[^\"\\n]+\"\\)");
+  private static final Pattern REACTION_HEADER_PATTERN =
+      Pattern.compile("reaction(?:\\s*\\w+)?\\s*\\{");
+  private static final Pattern ROUTINE_HEADER_PATTERN =
+      Pattern.compile("routine(?:\\s*\\w+)?\\s*\\(");
+  private static final Pattern REACTIONS_NAME_PATTERN = Pattern.compile("reactions: (\\w*)");
 
   public ReactionsFile extractBlocks(String content) {
     Header header = extractHeader(content);
@@ -23,30 +34,11 @@ public class BlockMapper {
   }
 
   private Header extractHeader(String content) {
-    int contentBegin = Integer.MAX_VALUE;
-
-    Pattern feature = Pattern.compile("@feature\\(type\\s*=\\s*\".+\"\\)");
-    Matcher featureMatcher = feature.matcher(content);
-    if (featureMatcher.find()) {
-      contentBegin = featureMatcher.start();
-    }
-
-    Pattern reaction = Pattern.compile("reaction\\s*\\w*\\s*\\{");
-    Matcher reactionMatcher = reaction.matcher(content);
-    if (reactionMatcher.find()) {
-      contentBegin = Math.min(contentBegin, reactionMatcher.start());
-    }
-
-    Pattern routine = Pattern.compile("routine\\s*\\w*\\s*\\(");
-    Matcher routineMatcher = routine.matcher(content);
-    if (routineMatcher.find()) {
-      contentBegin = Math.min(contentBegin, routineMatcher.start());
-    }
+    int contentBegin = extractContentBegin(content);
 
     int reactionsNameStart = 0;
     int reactionsNameEnd = 0;
-    Pattern reactionsName = Pattern.compile("reactions: (\\w*)");
-    Matcher reactionsNameMatcher = reactionsName.matcher(content);
+    Matcher reactionsNameMatcher = REACTIONS_NAME_PATTERN.matcher(content);
     if (reactionsNameMatcher.find()) {
       reactionsNameStart = reactionsNameMatcher.start(1);
       reactionsNameEnd = reactionsNameMatcher.end(1);
@@ -59,6 +51,27 @@ public class BlockMapper {
     return new Header(
         content.substring(reactionsNameStart, reactionsNameEnd),
         content.substring(0, contentBegin));
+  }
+
+  private int extractContentBegin(String content) {
+    int contentBegin = Integer.MAX_VALUE;
+
+    Matcher featureMatcher = FEATURE_HEADER_PATTERN.matcher(content);
+    if (featureMatcher.find()) {
+      contentBegin = featureMatcher.start();
+    }
+
+    Matcher reactionMatcher = REACTION_HEADER_PATTERN.matcher(content);
+    if (reactionMatcher.find()) {
+      contentBegin = Math.min(contentBegin, reactionMatcher.start());
+    }
+
+    Matcher routineMatcher = ROUTINE_HEADER_PATTERN.matcher(content);
+    if (routineMatcher.find()) {
+      contentBegin = Math.min(contentBegin, routineMatcher.start());
+    }
+
+    return contentBegin;
   }
 
   private CodeBlocks extractCodeBlocks(String content) {

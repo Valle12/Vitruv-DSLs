@@ -22,11 +22,6 @@ public class AdapterRegistry {
     this.fallback = new DefaultModelAdapter();
   }
 
-  public AdapterRegistry(List<MetamodelAdapter> adapters, MetamodelAdapter fallback) {
-    this.adapters = List.copyOf(adapters);
-    this.fallback = fallback;
-  }
-
   public MetamodelAdapter adapterFor(String nsUri) {
     if (nsUri == null) {
       return fallback;

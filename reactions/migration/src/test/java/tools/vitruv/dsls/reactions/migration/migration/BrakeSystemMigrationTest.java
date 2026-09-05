@@ -4,9 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import brakesystem.BrakeDisk;
-import brakesystem.Brakesystem;
-import brakesystem.BrakesystemFactory;
 import edu.kit.ipd.sdq.metamodels.cad.CAD_Model;
 import edu.kit.ipd.sdq.metamodels.cad.NumericParameter;
 import edu.kit.ipd.sdq.metamodels.cad.Parameter;
@@ -39,7 +36,6 @@ import simulink.SimuLinkFactory;
 import simulink.SimulinkModel;
 import tools.vitruv.change.propagation.ChangePropagationSpecification;
 import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
-import tools.vitruv.change.testutils.TestUserInteraction;
 import tools.vitruv.dsls.reactions.migration.TestDominanceContexts;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.graph.DominancePlan;
@@ -57,12 +53,12 @@ import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 @ExtendWith(RegisterMetamodelsInStandalone.class)
 class BrakeSystemMigrationTest {
   private static final AdapterRegistry ADAPTERS = new AdapterRegistry();
-  private static final String BRAKESYSTEM_NS = "http://www.example.org/brakesystem";
-  private static final String CAD_NS = "http://www.example.org/cad";
-  private static final String SIMULINK_NS = "http://vitruv.tools/methodologisttemplate/simulink";
-  private static final String AUTOSAR_NS = "http://vitruv.tools/methodologisttemplate/autosar";
-  private static final Set<String> ALL_NS = Set.of(BRAKESYSTEM_NS, CAD_NS, SIMULINK_NS, AUTOSAR_NS);
-  private static final int DIAMETER_IN_MM = 320;
+  private static final String BRAKESYSTEM_NS = BrakeSystemFixture.BRAKESYSTEM_NS;
+  private static final String CAD_NS = BrakeSystemFixture.CAD_NS;
+  private static final String SIMULINK_NS = BrakeSystemFixture.SIMULINK_NS;
+  private static final String AUTOSAR_NS = BrakeSystemFixture.AUTOSAR_NS;
+  private static final Set<String> ALL_NS = BrakeSystemFixture.ALL_NS;
+  private static final int DIAMETER_IN_MM = BrakeSystemFixture.DIAMETER_IN_MM;
 
   private static final List<ChangePropagationSpecification> BRAKE_CHAIN_SPECS =
       List.of(
@@ -81,46 +77,12 @@ class BrakeSystemMigrationTest {
     Vsums.prepareStandalone(ADAPTERS);
   }
 
-  private static TestUserInteraction permissive() {
-    TestUserInteraction interaction = new TestUserInteraction();
-    interaction.onTextInput(d -> true).always().respondWith("model");
-    interaction.onMultipleChoiceSingleSelection(d -> true).always().respondWithChoiceAt(0);
-    interaction.onConfirmation(d -> true).always().respondWith(true);
-    interaction.acknowledgeNotification(d -> true);
-    return interaction;
-  }
-
-  private static TestUserInteraction.ResultProvider answering() {
-    return new TestUserInteraction.ResultProvider(permissive());
-  }
-
-  private static Brakesystem frontAxle() {
-    Brakesystem brakesystem = BrakesystemFactory.eINSTANCE.createBrakesystem();
-    brakesystem.setInstanceName("FrontAxle");
-    brakesystem.setSpecificationType("OE");
-    BrakeDisk disk = BrakesystemFactory.eINSTANCE.createBrakeDisk();
-    disk.setId("disk-1");
-    disk.setOEM_number("34116792217");
-    disk.setSpecificationType("OE");
-    disk.setFittingPosition("front");
-    disk.setDiameterInMM(DIAMETER_IN_MM);
-    disk.setCenteringDiameterInMM(75);
-    disk.setRimHoleNumber(5);
-    disk.setHoleArrangementNumber(1);
-    disk.setBoltHoleCircleInMM(120);
-    disk.setBrakeDiskThicknessInMM(30);
-    disk.setMinimumThicknessInMM(28);
-    disk.setVentilated(true);
-    brakesystem.getBrakeComponents().add(disk);
-    return brakesystem;
-  }
-
   private static MigrationReport migrate(Path folder, MigrationSettings settings) {
     return new MigrationRunner(
             BRAKE_CHAIN,
             new PropagationGraph(BRAKE_CHAIN.createSpecifications()),
             new ExplicitDominance("brakesystem"),
-            answering(),
+            BrakeSystemFixture.answering(),
             ADAPTERS,
             settings)
         .run(folder);
@@ -294,15 +256,12 @@ class BrakeSystemMigrationTest {
   }
 
   private Path seededVsum() throws Exception {
-    Path folder = Files.createDirectories(tempDir.resolve("brake-vsum"));
-    InternalVirtualModel vsum = seed(folder);
-    vsum.dispose();
-    return folder;
+    return BrakeSystemFixture.seededVsum(tempDir.resolve("brake-vsum"), BRAKE_CHAIN);
   }
 
   private Path seededVsumWithHandWrittenPort() throws Exception {
     Path folder = Files.createDirectories(tempDir.resolve("brake-vsum-with-port"));
-    InternalVirtualModel vsum = seed(folder);
+    InternalVirtualModel vsum = BrakeSystemFixture.seed(folder, BRAKE_CHAIN);
     try (View view = Vsums.openViewOfAll(vsum, "write-port")) {
       CommittableView committable = view.withChangeRecordingTrait();
       InPort port = SimuLinkFactory.eINSTANCE.createInPort();
@@ -314,20 +273,5 @@ class BrakeSystemMigrationTest {
     }
 
     return folder;
-  }
-
-  @SuppressWarnings("UnstableApiUsage")
-  private InternalVirtualModel seed(Path folder) throws Exception {
-    InternalVirtualModel vsum =
-        Vsums.build(folder, BRAKE_CHAIN.createSpecifications(), answering());
-    try (View view = Vsums.openEmptyView(vsum, "seed")) {
-      CommittableView committable = view.withChangeDerivingTrait();
-      committable.registerRoot(
-          frontAxle(),
-          URI.createFileURI(folder.resolve("example.brakesystem").toAbsolutePath().toString()));
-      committable.commitChanges();
-    }
-
-    return vsum;
   }
 }

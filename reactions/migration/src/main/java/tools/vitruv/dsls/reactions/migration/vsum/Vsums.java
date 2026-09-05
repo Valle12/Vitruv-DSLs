@@ -98,6 +98,15 @@ public final class Vsums {
         .createView();
   }
 
+  public static List<EObject> liveRoots(InternalVirtualModel vsum) {
+    List<EObject> roots = new ArrayList<>();
+    for (Resource resource : List.copyOf(vsum.getViewSourceModels())) {
+      roots.addAll(resource.getContents());
+    }
+
+    return roots;
+  }
+
   public static List<EObject> readRoots(ViewProvider provider) {
     try (View view = openViewOfAll(provider, "read-all")) {
       return new ArrayList<>(view.getRootObjects());

@@ -1,8 +1,6 @@
 package tools.vitruv.reactions.preprocessor.extractor;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -167,7 +165,6 @@ class FeatureExtractorTest {
     }
   }
 
-  // TODO potentially also use @TempDir to write the files and no mocking in here
   @SuppressWarnings("resource")
   @Test
   @DisplayName("Test successful execution")

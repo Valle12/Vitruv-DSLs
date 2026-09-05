@@ -10,12 +10,15 @@ import org.eclipse.emf.ecore.EObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import pcm_mockup.PInterface;
 import pcm_mockup.Pcm_mockupFactory;
 import pcm_mockup.Repository;
+import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 
+@ExtendWith(RegisterMetamodelsInStandalone.class)
 class CounterpartIndexTest {
   private static final AdapterRegistry ADAPTERS = new AdapterRegistry();
 

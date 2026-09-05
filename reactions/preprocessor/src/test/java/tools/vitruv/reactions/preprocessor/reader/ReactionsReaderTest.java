@@ -31,7 +31,7 @@ class ReactionsReaderTest {
   }
 
   @Test
-  @DisplayName("Test valid dir without subdirs")
+  @DisplayName("Test valid dir with files at the top level")
   @SneakyThrows
   void test2() {
     Path path =
@@ -39,10 +39,15 @@ class ReactionsReaderTest {
             Objects.requireNonNull(getClass().getClassLoader().getResource("umljava/uml2java"))
                 .toURI());
     reactionsReader = new ReactionsReader(path.toString());
+    textReaderMock.when(() -> TextReader.readTextFile(any(Path.class))).thenCallRealMethod();
 
     Map<String, String> reactions = reactionsReader.readReactionsDir();
 
-    assertTrue(reactions.isEmpty());
+    assertEquals(5, reactions.size());
+    for (Map.Entry<String, String> entry : reactions.entrySet()) {
+      assertFalse(entry.getKey().contains("/"));
+      assertFalse(entry.getValue().isEmpty());
+    }
   }
 
   @Test
@@ -87,5 +92,23 @@ class ReactionsReaderTest {
 
     assertEquals(5, java2umlCount);
     assertEquals(5, uml2javaCount);
+  }
+
+  @Test
+  @DisplayName("Test valid dir with files at the top level and in subdirs")
+  @SneakyThrows
+  void test5() {
+    Path path =
+        Path.of(Objects.requireNonNull(getClass().getClassLoader().getResource("mixed")).toURI());
+    reactionsReader = new ReactionsReader(path.toString());
+    textReaderMock.when(() -> TextReader.readTextFile(any(Path.class))).thenCallRealMethod();
+
+    Map<String, String> reactions = reactionsReader.readReactionsDir();
+
+    assertEquals(4, reactions.size());
+    assertTrue(reactions.containsKey("Aggregate.reactions"));
+    assertTrue(reactions.containsKey("alpha/Caller.reactions"));
+    assertTrue(reactions.containsKey("alpha/Helpers.reactions"));
+    assertTrue(reactions.containsKey("beta/Qualified.reactions"));
   }
 }

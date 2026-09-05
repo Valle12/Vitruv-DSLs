@@ -67,6 +67,14 @@ public final class PreservationReportWriter {
         .append(outcome.policy().name().toLowerCase(Locale.ROOT))
         .append(outcome.applied() ? " (applied)" : " (analysed only)")
         .append("\n");
+    if (outcome.failed()) {
+      report
+          .append("The pass did not complete; the models are as the rules derived them: ")
+          .append(outcome.failure())
+          .append("\n");
+      return report.toString();
+    }
+
     appendSummary(report, outcome);
     appendPreserved(report, outcome);
     appendLost(report, outcome, location);

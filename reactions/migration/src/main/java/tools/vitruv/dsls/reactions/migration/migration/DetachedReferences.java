@@ -9,10 +9,6 @@ import org.eclipse.emf.ecore.EObject;
 public final class DetachedReferences {
   private final List<Reference> references;
 
-  public int size() {
-    return references.size();
-  }
-
   @SuppressWarnings("unchecked")
   public void reattach() {
     for (Reference reference : references) {

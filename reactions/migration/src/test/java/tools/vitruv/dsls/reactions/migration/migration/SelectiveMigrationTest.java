@@ -160,6 +160,22 @@ class SelectiveMigrationTest {
     assertEquals(1, umlPackage(folder).getInterfaces().getFirst().getMethods().size());
     assertEquals(0, pcmRepository(folder).getInterfaces().getFirst().getMethods().size());
     assertEquals(Set.of("Counter"), pcmComponentNames(folder));
+
+    SelectiveOutcome.RuleDiff rules = report.selective().rules();
+    assertEquals(
+        List.of(
+            new SelectiveOutcome.DirtyRule(
+                METHOD_INSERTED.value(), SelectiveOutcome.DirtyRule.Kind.REMOVED, 1)),
+        rules.dirty(),
+        "the removed rule is the dirty one, and its trigger matched the one method");
+    assertEquals(rules.current() + 1, rules.persisted());
+    SelectiveOutcome.AffectedElement affected = report.selective().affectedElements().getFirst();
+    assertTrue(affected.key().contains("model.uml_mockup#"), affected.key());
+    assertEquals("uml_mockup::UMethod", affected.metaclass());
+    assertEquals(List.of(METHOD_INSERTED.value()), affected.matchedBy());
+    assertTrue(affected.refersTo().isEmpty());
+    assertTrue(report.selective().sourceElements() > 0);
+    assertTrue(report.selective().modelElements() > report.selective().sourceElements());
   }
 
   @Test
@@ -191,7 +207,20 @@ class SelectiveMigrationTest {
         migrate(folder, SelectiveMockupWorlds.withRenamedClassRule(), MigrationMode.ID_DIFF);
 
     assertEquals(
-        List.of("rule-diff", "selection", "preregister", "delete-commit", "reinsert-commit"),
+        List.of(
+            "rule-diff",
+            "load",
+            "roots",
+            "dominance",
+            "classify",
+            "left-out",
+            "view-open",
+            "selection",
+            "preregister",
+            "delete-commit",
+            "reinsert-commit",
+            "view-close",
+            "refresh"),
         report.statistics().phaseNames());
     assertFalse(report.statistics().total().isNegative());
   }

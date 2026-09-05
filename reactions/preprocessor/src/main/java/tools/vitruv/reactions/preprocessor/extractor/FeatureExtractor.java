@@ -21,11 +21,14 @@ import tools.vitruv.reactions.preprocessor.reader.ReactionsReader;
 @Slf4j
 @RequiredArgsConstructor
 public class FeatureExtractor {
-  private final String configFile;
-  private final String reactionsDir;
   private static final String OUTPUT_DIR_SUFFIX = "-reactions";
   private static final String JSON_EXTENSION = ".json";
-  private static final Pattern WORD_PATTERN = Pattern.compile("(\\w+\\.)?(\\w+)");
+  private static final Pattern WORD_PATTERN = Pattern.compile("(\\w+)(?:\\.(\\w+))?");
+  private static final Pattern UNQUALIFIED_IMPORT_PATTERN =
+      Pattern.compile(
+          "^\\s*import\\s+(?:routines\\s+)?(\\w+)[ \\t]*(?://[^\\n]*)?\\r?$", Pattern.MULTILINE);
+  private final String configFile;
+  private final String reactionsDir;
   private final Map<String, ReactionsUtils> reactionsUtils = new HashMap<>();
 
   public void extractFeatures() {
@@ -89,13 +92,17 @@ public class FeatureExtractor {
       sb.append(reactionsFile.header().header());
       reactionsUtils.put(
           reactionsFile.header().reactionsName(),
-          new ReactionsUtils(reactionsFile, outputFile, sb, includedRoutines));
+          new ReactionsUtils(
+              reactionsFile,
+              outputFile,
+              sb,
+              includedRoutines,
+              extractUnqualifiedImports(reactionsFile.header().header())));
     }
 
     for (Map.Entry<String, ReactionsUtils> entry : reactionsUtils.entrySet()) {
       CodeBlocks codeBlocks = entry.getValue().reactionsFile().codeBlocks();
       StringBuilder sb = entry.getValue().sb();
-      Set<String> includedRoutines = entry.getValue().includedRoutines();
 
       for (Map.Entry<String, List<String>> featureMapping : codeBlocks.reactions().entrySet()) {
         if (!features.contains(featureMapping.getKey())) {
@@ -105,7 +112,7 @@ public class FeatureExtractor {
         for (String reaction : featureMapping.getValue()) {
           sb.append(reaction);
           sb.append("\n\n");
-          appendRoutines(reaction, codeBlocks, includedRoutines, sb);
+          appendRoutines(reaction, entry.getValue());
         }
       }
     }
@@ -122,35 +129,81 @@ public class FeatureExtractor {
     }
   }
 
-  private void appendRoutines(
-      String content, CodeBlocks codeBlocks, Set<String> includedRoutines, StringBuilder sb) {
+  private void appendRoutines(String content, ReactionsUtils current) {
+    if (content == null) {
+      return;
+    }
+
+    CodeBlocks codeBlocks = current.reactionsFile().codeBlocks();
+    Set<String> includedRoutines = current.includedRoutines();
+    StringBuilder sb = current.sb();
     Matcher matcher = WORD_PATTERN.matcher(content);
 
     while (matcher.find()) {
-      String routineKey = matcher.group(2);
+      String qualifiedName = matcher.group(2);
+      String routineKey = qualifiedName == null ? matcher.group(1) : qualifiedName;
+      appendLinkedRoutines(qualifiedName == null ? null : matcher.group(1), routineKey);
 
-      String linkedReaction = matcher.group(1);
-      if (linkedReaction != null) {
-        linkedReaction = linkedReaction.substring(0, linkedReaction.length() - 1);
-        ReactionsUtils linkedReactionsUtils = reactionsUtils.get(linkedReaction);
-        if (linkedReactionsUtils != null) {
-          CodeBlocks linkedCodeBlocks = linkedReactionsUtils.reactionsFile().codeBlocks();
-          Set<String> linkedIncludedRoutines = linkedReactionsUtils.includedRoutines();
-          String linkedRoutine = linkedCodeBlocks.routines().get(matcher.group(2));
-          StringBuilder linkedSb = linkedReactionsUtils.sb();
-          appendRoutines(linkedRoutine, linkedCodeBlocks, linkedIncludedRoutines, linkedSb);
-        }
-      }
-
-      if (!codeBlocks.routines().containsKey(routineKey) || includedRoutines.contains(routineKey)) {
+      if (includedRoutines.contains(routineKey)) {
         continue;
       }
 
-      String routine = codeBlocks.routines().get(routineKey);
-      includedRoutines.add(routineKey);
-      sb.append(routine);
-      sb.append("\n\n");
-      appendRoutines(routine, codeBlocks, includedRoutines, sb);
+      if (!codeBlocks.routines().containsKey(routineKey)) {
+        appendImportedRoutine(routineKey, current);
+      } else {
+        String routine = codeBlocks.routines().get(routineKey);
+        includedRoutines.add(routineKey);
+        sb.append(routine);
+        sb.append("\n\n");
+        appendRoutines(routine, current);
+      }
     }
+  }
+
+  private void appendLinkedRoutines(String linkedReaction, String routineKey) {
+    if (linkedReaction == null) {
+      return;
+    }
+
+    ReactionsUtils linkedReactionsUtils = reactionsUtils.get(linkedReaction);
+    if (linkedReactionsUtils == null) {
+      return;
+    }
+
+    String linkedRoutine =
+        linkedReactionsUtils.reactionsFile().codeBlocks().routines().get(routineKey);
+    appendRoutines(linkedRoutine, linkedReactionsUtils);
+  }
+
+  private void appendImportedRoutine(String routineKey, ReactionsUtils current) {
+    for (String importedName : current.unqualifiedImports()) {
+      ReactionsUtils imported = reactionsUtils.get(importedName);
+      String routine =
+          imported == null
+              ? null
+              : imported.reactionsFile().codeBlocks().routines().get(routineKey);
+      if (imported == null || routine == null) {
+        continue;
+      }
+
+      if (!imported.includedRoutines().contains(routineKey)) {
+        imported.includedRoutines().add(routineKey);
+        imported.sb().append(routine);
+        imported.sb().append("\n\n");
+        appendRoutines(routine, imported);
+      }
+      return;
+    }
+  }
+
+  private List<String> extractUnqualifiedImports(String header) {
+    List<String> imports = new ArrayList<>();
+    Matcher matcher = UNQUALIFIED_IMPORT_PATTERN.matcher(header);
+
+    while (matcher.find()) {
+      imports.add(matcher.group(1));
+    }
+
+    return imports;
   }
 }

@@ -4,6 +4,6 @@ import java.util.List;
 
 public record DominancePlan(List<MetamodelNode> sources, List<MetamodelNode> derived) {
   public MetamodelNode dominant() {
-    return sources.get(0);
+    return sources.getFirst();
   }
 }

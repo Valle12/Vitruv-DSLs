@@ -56,8 +56,10 @@ public final class VsumBackup {
   }
 
   private static void deleteLoudly(Path path) {
-    if (!path.toFile().delete()) {
-      log.warn("Could not delete {} while clearing the folder for restore", path);
+    try {
+      Files.delete(path);
+    } catch (IOException e) {
+      log.warn("Could not delete {} while clearing the folder for restore", path, e);
     }
   }
 

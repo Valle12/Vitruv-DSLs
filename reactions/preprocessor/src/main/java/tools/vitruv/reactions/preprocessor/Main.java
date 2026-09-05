@@ -29,10 +29,9 @@ public class Main {
       return 1;
     }
 
-    boolean configFirst;
-    configFirst = CONFIG.equals(args[0]) || CONFIG_SHORT.equals(args[0]);
-    String configFile = configFirst ? args[1] : args[3];
-    String reactionsDir = configFirst ? args[3] : args[1];
+    boolean configFirst = CONFIG.equals(args[0]) || CONFIG_SHORT.equals(args[0]);
+    String configFile = args[configFirst ? 1 : 3];
+    String reactionsDir = args[configFirst ? 3 : 1];
 
     FeatureExtractor featureExtractor = new FeatureExtractor(configFile, reactionsDir);
     featureExtractor.extractFeatures();

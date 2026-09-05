@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.eclipse.emf.common.util.URI;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -109,6 +110,16 @@ class SelectiveIncomingReferenceTest {
         2,
         report.selective().affectedElementCount(),
         "the interface the rule names, and the component pointing at it");
+    List<SelectiveOutcome.AffectedElement> affected = report.selective().affectedElements();
+    assertEquals(
+        List.of(BACK_INTERFACE_INSERTED.value(), BACK_INTERFACE_INSERTED_V2.value()),
+        affected.get(0).matchedBy(),
+        "the interface is matched by the removed and the added rule, which share a trigger");
+    assertEquals(
+        Optional.of(affected.get(0).key()),
+        affected.get(1).refersTo(),
+        "the component is selected for referencing the interface");
+    assertTrue(affected.get(1).matchedBy().isEmpty());
     Repository repository = pcmRepository(folder);
     assertEquals(1, repository.getInterfaces().size());
     assertEquals(1, repository.getComponents().size());

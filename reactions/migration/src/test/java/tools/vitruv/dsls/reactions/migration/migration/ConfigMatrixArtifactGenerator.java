@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -46,6 +47,16 @@ public final class ConfigMatrixArtifactGenerator {
   private static final int CONFIGURATIONS = PropagationJars.CONFIGURATIONS;
   private static final AdapterRegistry ADAPTERS = new AdapterRegistry();
   private static final PreservationPolicy CELL_POLICY = PreservationPolicy.REPORT;
+  private static final String CONTENTS_NOTE =
+      """
+
+      ## What is here
+
+      `model/library.uml` and `src/catalog/*.java` as this run left them, and the rule registry the
+      VSUM carries afterwards. Left out: the standard library stubs JaMoPP derives under
+      `src/java`, and the VSUM's own bookkeeping under `vsum`, which only records identities and
+      the location it was written at.
+      """;
 
   private ConfigMatrixArtifactGenerator() {}
 
@@ -95,7 +106,7 @@ public final class ConfigMatrixArtifactGenerator {
     return number;
   }
 
-  private static Path resolveTarget(String[] args) {
+  static Path resolveTarget(String[] args) {
     String configured =
         args.length > 0 && !args[0].isBlank()
             ? args[0]
@@ -303,9 +314,33 @@ public final class ConfigMatrixArtifactGenerator {
     cell.setProperty("undecided", String.valueOf(report.preservation().openDecisions().size()));
     cell.setProperty("manualItems", String.valueOf(report.preservation().manualItems()));
     cell.setProperty("compilerErrors", String.valueOf(compilerErrors.size()));
+
+    SelectiveOutcome selective = report.selective();
+    SelectiveOutcome.RuleDiff rules = selective.rules();
+    cell.setProperty("rulesPersisted", String.valueOf(rules.persisted()));
+    cell.setProperty("rulesCurrent", String.valueOf(rules.current()));
+    cell.setProperty(
+        "dirtyRulesAdded", String.valueOf(rules.count(SelectiveOutcome.DirtyRule.Kind.ADDED)));
+    cell.setProperty(
+        "dirtyRulesRemoved", String.valueOf(rules.count(SelectiveOutcome.DirtyRule.Kind.REMOVED)));
+    cell.setProperty("dirtyRulesMatching", String.valueOf(rules.matching()));
+    cell.setProperty("sourceElements", String.valueOf(selective.sourceElements()));
+    cell.setProperty("modelElements", String.valueOf(selective.modelElements()));
+    cell.setProperty("matchedElements", String.valueOf(selective.matchedElementCount()));
+    cell.setProperty("referrerElements", String.valueOf(selective.referrerElementCount()));
+    cell.setProperty("leftOutElements", String.valueOf(selective.leftOutElements().size()));
+    cell.setProperty("totalMillis", millis(report.statistics().total()));
+    report
+        .statistics()
+        .phases()
+        .forEach(phase -> cell.setProperty("phase." + phase.phase(), millis(phase.duration())));
     try (var out = Files.newOutputStream(runFolder.resolve(CELL_FILE))) {
       cell.store(out, "How " + cellFolderName(from, to) + " came out. Read RUN.md for the prose.");
     }
+  }
+
+  private static String millis(Duration duration) {
+    return String.format(Locale.ROOT, "%.3f", duration.toNanos() / 1_000_000.0);
   }
 
   private static int correspondenceDeviations(
@@ -384,7 +419,7 @@ public final class ConfigMatrixArtifactGenerator {
         missing);
   }
 
-  private static String rootCauseOf(Throwable failure) {
+  static String rootCauseOf(Throwable failure) {
     Throwable cause = failure;
     while (cause.getCause() != null && cause.getCause() != cause) {
       cause = cause.getCause();
@@ -483,7 +518,7 @@ public final class ConfigMatrixArtifactGenerator {
         """
         + handWrittenContentNote(handWrittenContent)
         + compilation
-        + contentsNote();
+        + CONTENTS_NOTE;
   }
 
   private static String handWrittenContentNote(boolean handWrittenContent) {
@@ -557,6 +592,8 @@ public final class ConfigMatrixArtifactGenerator {
         .append(row("items left to deal with by hand", report.preservation().manualItems()))
         .append(row("phases", String.join(", ", report.statistics().phaseNames())));
 
+    appendSelection(note, report.selective());
+
     note.append("\n## Against config").append(to).append(" from scratch\n\n");
     if (uml.agrees() && java.agrees()) {
       note.append("The migrated models describe exactly what `baselines/config").append(to);
@@ -597,14 +634,106 @@ public final class ConfigMatrixArtifactGenerator {
     }
 
     appendCompilerErrors(note, compilerErrors);
-    return note + contentsNote();
+    return note + CONTENTS_NOTE;
   }
 
-  /**
-   * What {@code javac} makes of the Java the run left, which a model comparison cannot say. A cell
-   * that agrees with its baseline can still hold Java that does not build, and one that deviates
-   * can still build - the two are separate results and are reported apart.
-   */
+  private static void appendSelection(StringBuilder note, SelectiveOutcome selective) {
+    SelectiveOutcome.RuleDiff rules = selective.rules();
+    String dirty =
+        rules.dirty().size()
+            + " ("
+            + rules.count(SelectiveOutcome.DirtyRule.Kind.ADDED)
+            + " added, "
+            + rules.count(SelectiveOutcome.DirtyRule.Kind.REMOVED)
+            + " removed"
+            + (rules.count(SelectiveOutcome.DirtyRule.Kind.CHANGED) > 0
+                ? ", " + rules.count(SelectiveOutcome.DirtyRule.Kind.CHANGED) + " changed"
+                : "")
+            + ")";
+    note.append("\n## What the rule diff and the trigger mechanism found\n\n")
+        .append("| | |\n|---|---|\n")
+        .append(row("rules in the persisted registry", rules.persisted()))
+        .append(row("rules in the new specifications", rules.current()))
+        .append(row("dirty rules", dirty))
+        .append(row("dirty rules whose trigger matches a source element", rules.matching()))
+        .append(row("source elements probed", selective.sourceElements()))
+        .append(row("elements in the models", selective.modelElements()))
+        .append(row("matched elements", selective.matchedElementCount()))
+        .append(row("elements added as referrers", selective.referrerElementCount()))
+        .append(row("elements left out", selective.leftOutElements().size()));
+    if (rules.dirty().isEmpty()) {
+      note.append("\nNothing is dirty, so nothing was selected.\n");
+      return;
+    }
+
+    note.append("\n### Dirty rules\n\n```\n");
+    rules
+        .dirty()
+        .forEach(
+            rule ->
+                note.append(rule.kind().marker())
+                    .append(' ')
+                    .append(rule.id())
+                    .append("  matches ")
+                    .append(rule.matchedElements())
+                    .append(" source element(s)\n"));
+    note.append("```\n");
+
+    note.append("\n### Affected elements\n\n");
+    if (selective.affectedElements().isEmpty()) {
+      note.append("None; the dirty rules match no source element.\n");
+    } else {
+      note.append("```\n");
+      selective
+          .affectedElements()
+          .forEach(
+              element ->
+                  note.append(shortKey(element.key()))
+                      .append("  ")
+                      .append(element.metaclass())
+                      .append("  ")
+                      .append(
+                          element
+                              .refersTo()
+                              .map(target -> "refers to " + shortKey(target))
+                              .orElseGet(
+                                  () -> "matched by " + String.join(", ", element.matchedBy())))
+                      .append('\n'));
+      note.append("```\n");
+    }
+
+    note.append("\n### Left out\n\n");
+    if (selective.leftOutElements().isEmpty()) {
+      note.append("None.\n");
+    } else {
+      note.append("```\n");
+      selective
+          .leftOutElements()
+          .forEach(
+              element ->
+                  note.append(shortKey(element.key()))
+                      .append("  ")
+                      .append(element.metaclass())
+                      .append("  ")
+                      .append(withoutTheScratchFolder(element.reason()))
+                      .append('\n'));
+      note.append("```\n");
+    }
+  }
+
+  private static String shortKey(String key) {
+    int fragment = key.indexOf('#');
+    if (fragment < 0) {
+      return key;
+    }
+
+    return key.substring(key.lastIndexOf('/', fragment) + 1);
+  }
+
+  private static String withoutTheScratchFolder(String reason) {
+    return reason.replaceAll("file:/\\S*?/library-vsum/", "");
+  }
+
   private static void appendCompilerErrors(StringBuilder note, List<String> compilerErrors) {
     note.append("\n## Does the Java compile\n\n");
     if (compilerErrors.isEmpty()) {
@@ -714,7 +843,7 @@ public final class ConfigMatrixArtifactGenerator {
         `
         is what they do derive from the same UML.
         """
-        + contentsNote();
+        + CONTENTS_NOTE;
   }
 
   private static String unrunnableNote(int from, int to, int missing) {
@@ -752,18 +881,6 @@ public final class ConfigMatrixArtifactGenerator {
     return "| " + label + " | " + value + " |\n";
   }
 
-  private static String contentsNote() {
-    return """
-
-        ## What is here
-
-        `model/library.uml` and `src/catalog/*.java` as this run left them, and the rule registry the
-        VSUM carries afterwards. Left out: the standard library stubs JaMoPP derives under
-        `src/java`, and the VSUM's own bookkeeping under `vsum`, which only records identities and
-        the location it was written at.
-        """;
-  }
-
   // -------------------------------------------------------------------- index
   private static String index(Path configs, Path runs) throws IOException {
     StringBuilder index = new StringBuilder();
@@ -783,7 +900,9 @@ public final class ConfigMatrixArtifactGenerator {
         and read against `baselines/config<to>`, the same example derived with the target rules into
         an empty VSUM. `--mode ids` is the selective migration: it works out which rules changed by
         their ids and repropagates only the elements those rules affect, tearing them down before
-        the new rules build them up again.
+        the new rules build them up again. What that came to in a cell - the dirty rules, the
+        source elements their triggers selected and the ones left out - is in the cell's `RUN.md`
+        under *What the rule diff and the trigger mechanism found*.
 
         ## The matrix
 
@@ -855,13 +974,6 @@ public final class ConfigMatrixArtifactGenerator {
     return index + "\nLast written " + LocalDate.now() + ".\n";
   }
 
-  /**
-   * The legend, holding an entry for every label the table above it actually uses and nothing else.
-   *
-   * <p>A legend that explains outcomes no cell has reads as if some cell might have them. The
-   * entries are kept in one place so a label and its explanation cannot drift apart, and the order
-   * is the order they are declared in here rather than the order the table happens to reach them.
-   */
   private static String legend(Set<String> used) {
     Map<String, String> entries = new LinkedHashMap<>();
     entries.put(

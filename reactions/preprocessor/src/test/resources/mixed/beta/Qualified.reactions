@@ -1,0 +1,17 @@
+import "http://example.org/alpha" as alpha
+import "http://example.org/beta" as beta
+
+reactions: qualified
+in reaction to changes in beta
+execute actions in alpha
+
+import helpers using qualified names
+
+@feature(type = "featOne")
+reaction OtherInserted {
+	after element beta::Other inserted as root
+	call {
+		helpers.helperTwo(newValue)
+		helpers.notARoutine(newValue)
+	}
+}

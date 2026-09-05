@@ -9,17 +9,27 @@ public record PreservationOutcome(
     List<PreservedItem> preserved,
     List<LostItem> lost,
     List<DecisionItem> decisions,
-    Path recoveryFolder) {
+    Path recoveryFolder,
+    String failure) {
   public static PreservationOutcome skipped() {
-    return new PreservationOutcome(PreservationPolicy.OFF, List.of(), List.of(), List.of(), null);
+    return new PreservationOutcome(
+        PreservationPolicy.OFF, List.of(), List.of(), List.of(), null, null);
+  }
+
+  public static PreservationOutcome failed(PreservationPolicy policy, String reason) {
+    return new PreservationOutcome(policy, List.of(), List.of(), List.of(), null, reason);
   }
 
   public PreservationOutcome recoverableFrom(Path folder) {
-    return new PreservationOutcome(policy, preserved, lost, decisions, folder);
+    return new PreservationOutcome(policy, preserved, lost, decisions, folder, failure);
   }
 
   public boolean attempted() {
     return policy.analyses();
+  }
+
+  public boolean failed() {
+    return failure != null;
   }
 
   public boolean applied() {

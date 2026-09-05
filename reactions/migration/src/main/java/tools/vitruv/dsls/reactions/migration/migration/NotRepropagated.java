@@ -2,8 +2,8 @@ package tools.vitruv.dsls.reactions.migration.migration;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -18,34 +18,41 @@ import tools.vitruv.change.atomic.hid.ObjectResolutionUtil;
 import tools.vitruv.change.correspondence.Correspondence;
 import tools.vitruv.change.correspondence.view.CorrespondenceModelView;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
+import tools.vitruv.dsls.reactions.migration.migration.SelectiveOutcome.LeftOutElement;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
 @Slf4j
 final class NotRepropagated {
   private static final int SAMPLE_SIZE = 10;
 
-  private final Set<String> keys;
+  private final List<LeftOutElement> elements;
+  private final Set<String> keys = new HashSet<>();
 
-  private NotRepropagated(Set<String> keys) {
-    this.keys = keys;
+  private NotRepropagated(List<LeftOutElement> elements) {
+    this.elements = List.copyOf(elements);
+    elements.forEach(element -> keys.add(element.key()));
   }
 
   static NotRepropagated of(
       InternalVirtualModel vsum, Set<URI> sourceUris, Path vsumFolder, AdapterRegistry adapters) {
     CorrespondenceModelView<Correspondence> correspondences = vsum.getCorrespondenceModel();
-    Set<String> keys = new LinkedHashSet<>();
-    List<String> samples = new ArrayList<>();
+    List<LeftOutElement> elements = new ArrayList<>();
     for (Resource resource : List.copyOf(vsum.getViewSourceModels())) {
       if (resource.getURI() != null && sourceUris.contains(resource.getURI())) {
-        collectFrom(resource, correspondences, vsumFolder, adapters, keys, samples);
+        collectFrom(resource, correspondences, vsumFolder, adapters, elements);
       }
     }
 
-    if (!keys.isEmpty()) {
-      log.info("Leaving {} element(s) out of the repropagation, e.g. {}", keys.size(), samples);
+    if (!elements.isEmpty()) {
+      List<String> samples =
+          elements.stream()
+              .limit(SAMPLE_SIZE)
+              .map(element -> element.key() + " (" + element.reason() + ")")
+              .toList();
+      log.info("Leaving {} element(s) out of the repropagation, e.g. {}", elements.size(), samples);
     }
 
-    return new NotRepropagated(keys);
+    return new NotRepropagated(elements);
   }
 
   private static void collectFrom(
@@ -53,8 +60,7 @@ final class NotRepropagated {
       CorrespondenceModelView<Correspondence> correspondences,
       Path vsumFolder,
       AdapterRegistry adapters,
-      Set<String> keys,
-      List<String> samples) {
+      List<LeftOutElement> elements) {
     for (Iterator<EObject> it = resource.getAllContents(); it.hasNext(); ) {
       EObject element = it.next();
       if (element.eIsProxy()) {
@@ -63,11 +69,7 @@ final class NotRepropagated {
 
       String reason = reasonToLeaveOut(correspondences, element, vsumFolder, adapters);
       if (reason != null) {
-        String key = keyOf(element);
-        keys.add(key);
-        if (samples.size() < SAMPLE_SIZE) {
-          samples.add(key + " (" + reason + ")");
-        }
+        elements.add(new LeftOutElement(keyOf(element), metaclassOf(element), reason));
       }
     }
   }
@@ -77,6 +79,10 @@ final class NotRepropagated {
     return (resource == null ? "" : resource.getURI())
         + "#"
         + ObjectResolutionUtil.getHierarchicUriFragment(element);
+  }
+
+  static String metaclassOf(EObject element) {
+    return element.eClass().getEPackage().getNsPrefix() + "::" + element.eClass().getName();
   }
 
   private static String reasonToLeaveOut(
@@ -105,6 +111,10 @@ final class NotRepropagated {
     URI uri =
         partner.eIsProxy() ? ((InternalEObject) partner).eProxyURI() : EcoreUtil.getURI(partner);
     return !adapters.isMigratedModel(uri, vsumFolder);
+  }
+
+  List<LeftOutElement> leftOut() {
+    return elements;
   }
 
   Predicate<EObject> asExclusion() {

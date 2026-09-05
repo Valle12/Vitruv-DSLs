@@ -183,12 +183,20 @@ class SelectivePreservationTest {
     assertEquals(
         List.of(
             "rule-diff",
+            "load",
+            "roots",
+            "dominance",
+            "classify",
+            "left-out",
+            "view-open",
             "selection",
             "snapshot",
             "preregister",
             "delete-commit",
             "reinsert-commit",
-            "preserve"),
+            "view-close",
+            "preserve",
+            "refresh"),
         report.statistics().phaseNames());
   }
 

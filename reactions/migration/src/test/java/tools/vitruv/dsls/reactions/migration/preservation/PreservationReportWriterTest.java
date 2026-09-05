@@ -27,6 +27,7 @@ class PreservationReportWriterTest {
                 DecisionItem.unresolved("fourth", "which one"),
                 DecisionItem.carrier("fifth", null),
                 DecisionItem.replaced("sixth", "another value")),
+            null,
             null);
 
     String report = PreservationReportWriter.render(outcome, Location.VSUM_FOLDER);
@@ -55,6 +56,7 @@ class PreservationReportWriterTest {
             List.of(new PreservedItem("first", "target", "feature")),
             List.of(new LostItem("second", LossReason.RULE_NO_LONGER_DERIVES, null)),
             List.of(DecisionItem.unresolved("third", "which one")),
+            null,
             null);
 
     String report = PreservationReportWriter.render(outcome, Location.VSUM_FOLDER);
@@ -72,7 +74,8 @@ class PreservationReportWriterTest {
   @DisplayName("a run with nothing to tell renders no decision sections at all")
   void test3() {
     PreservationOutcome outcome =
-        new PreservationOutcome(PreservationPolicy.REPORT, List.of(), List.of(), List.of(), null);
+        new PreservationOutcome(
+            PreservationPolicy.REPORT, List.of(), List.of(), List.of(), null, null);
 
     String report = PreservationReportWriter.render(outcome, Location.VSUM_FOLDER);
 
@@ -96,6 +99,7 @@ class PreservationReportWriterTest {
                 List.of(),
                 List.of(new LostItem("gone", LossReason.NO_COUNTERPART_CONTAINER, null)),
                 List.of(),
+                null,
                 null)
             .recoverableFrom(recovery);
 

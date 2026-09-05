@@ -12,7 +12,10 @@ import allElementTypes.Root;
 import org.eclipse.emf.ecore.EStructuralFeature;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 
+@ExtendWith(RegisterMetamodelsInStandalone.class)
 class SlotResolverTest {
   private static final AllElementTypesPackage TYPES = AllElementTypesPackage.eINSTANCE;
 

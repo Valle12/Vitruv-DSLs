@@ -2,235 +2,235 @@
 <correspondence:Correspondences xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:correspondence="http://vitruv.tools/metamodels/change/correspondence/1.0" xmlns:correspondence_1="http://vitruv.tools/metamodels/dsls/reactions/runtime/correspondence/1.0">
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="http://www.eclipse.org/uml2/5.0.0/UML#//Model"/>
-    <rightEObjects href="../model/library.uml#_l6DT8JdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWPhcKR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/package-info.java#/"/>
-    <rightEObjects href="../model/library.uml#_l6FwMJdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWPhcaR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/package-info.java#/"/>
     <rightEObjects href="http://www.emftext.org/java/containers#//Package"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6IMcpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWQvkaR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Identifiable.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6IMc5dVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWQvkqR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Borrowable.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6IMdJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWQvk6R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/MediaType.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6JakJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWRWoKR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Isbn.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6JakZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWRWoaR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6JakpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWRWoqR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6KBoJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWRWo6R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/LibraryCard.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6KBoZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWRWpKR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6KosJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWR9sKR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Identifiable.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6LPwJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWR9sqR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Borrowable.java#//@classifiers.0/@extends.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6LPwZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWR9s6R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Borrowable.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/Borrowable.java#//@classifiers.0/@members.0/@parameters.0"/>
-    <rightEObjects href="../model/library.uml#_l6L20JdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWSkwaR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/MediaType.java#//@classifiers.0/@constants.0"/>
-    <rightEObjects href="../model/library.uml#_l6L20ZdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWSkwqR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/MediaType.java#//@classifiers.0/@constants.1"/>
-    <rightEObjects href="../model/library.uml#_l6Md4JdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWSkw6R2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/MediaType.java#//@classifiers.0/@constants.2"/>
-    <rightEObjects href="../model/library.uml#_l6Md4ZdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWSkxKR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6NE8JdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWSkxaR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Isbn.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6NE8JdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWSkxaR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Isbn.java#//@classifiers.0/@members.1"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6NE8JdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWSkxaR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Isbn.java#//@classifiers.0/@members.2"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6NE8ZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6NE8ZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.1"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6NE8ZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.2"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6NE8pdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.3"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6NE8pdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.4"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6NE8pdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.5"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6NsAJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.6"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6NsAJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.7"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6NsAJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL0qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.8"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6NsAZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL06R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.9"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6NsAZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL06R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.10"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6NsAZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL06R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.11"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6OTEJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTL1KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@implements.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6OTEZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy4KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Media.java#//@classifiers.0/@members.12"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6O6IJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy4aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@extends"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6O6IZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy4qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6O6IZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy4qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.1"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6O6IZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy4qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.2"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6O6IpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy46R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.3"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6O6IpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy46R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.4"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6O6IpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy46R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.5"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6O6I5dVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWTy5KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Book.java#//@classifiers.0/@members.6"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6PhMJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/LibraryCard.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6PhMJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/LibraryCard.java#//@classifiers.0/@members.1"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6PhMJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8KR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/LibraryCard.java#//@classifiers.0/@members.2"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6PhMZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.0"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6PhMZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.1"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6PhMZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8aR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.2"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6PhMpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.3"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6PhMpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.4"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6PhMpdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ8qR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.5"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6PhM5dVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ86R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.6"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="getter">
-    <leftEObjects href="../model/library.uml#_l6PhM5dVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ86R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.7"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="setter">
-    <leftEObjects href="../model/library.uml#_l6PhM5dVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWUZ86R2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.8"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6QIQJdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWVBAKR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.9"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
-    <leftEObjects href="../model/library.uml#_l6QIQZdVEfGH8Izl5CzsyQ"/>
+    <leftEObjects href="../model/library.uml#_fWVBAaR2EfGlnKQH4Q2_Nw"/>
     <rightEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.10"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/catalog/Member.java#//@classifiers.0/@members.9/@parameters.0"/>
-    <rightEObjects href="../model/library.uml#_l6QvUJdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fWVBA6R2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="BOOLEAN">
     <leftEObjects href="http://www.eclipse.org/uml2/5.0.0/UML#//PrimitiveType"/>
@@ -270,11 +270,11 @@
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="archive:file:/__JAVA_BASE_JMOD__!/classes/java/lang/String.class#//@classifiers.0"/>
-    <rightEObjects href="../model/library.uml#_mKfjsJdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fiGMIKR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/java/package-info.java#/"/>
-    <rightEObjects href="../model/library.uml#_mKY2AJdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fiAskKR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/java/package-info.java#/"/>
@@ -282,7 +282,7 @@
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/java/lang/package-info.java#/"/>
-    <rightEObjects href="../model/library.uml#_mKaEIJdVEfGH8Izl5CzsyQ"/>
+    <rightEObjects href="../model/library.uml#_fiB6sKR2EfGlnKQH4Q2_Nw"/>
   </correspondences>
   <correspondences xsi:type="correspondence_1:ReactionsCorrespondence" tag="">
     <leftEObjects href="../src/java/lang/package-info.java#/"/>

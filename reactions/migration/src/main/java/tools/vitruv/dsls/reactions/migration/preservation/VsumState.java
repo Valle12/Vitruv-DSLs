@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -30,7 +31,7 @@ import tools.vitruv.framework.vsum.helper.VsumFileSystemLayout;
 public final class VsumState {
   private final Path folder;
   private final Map<String, List<EObject>> rootsByResourceKey;
-  private final Map<EObject, Set<EObject>> partners;
+  private final Map<EObject, Set<Partner>> partners;
 
   @Getter private final ResourceSet resourceSet;
 
@@ -55,16 +56,17 @@ public final class VsumState {
     return rootsByResourceKey;
   }
 
-  private static Map<EObject, Set<EObject>> loadCorrespondences(
+  private static Map<EObject, Set<Partner>> loadCorrespondences(
       Path folder, ResourceSet resourceSet) {
-    Map<EObject, Set<EObject>> partners = new LinkedHashMap<>();
+    Map<EObject, Set<Partner>> partners = new LinkedHashMap<>();
     for (Correspondence correspondence : persistedCorrespondences(folder, resourceSet)) {
       List<EObject> left = resolved(correspondence.getLeftEObjects(), resourceSet);
       List<EObject> right = resolved(correspondence.getRightEObjects(), resourceSet);
+      String tag = Objects.requireNonNullElse(correspondence.getTag(), "");
       for (EObject leftElement : left) {
         for (EObject rightElement : right) {
-          link(partners, leftElement, rightElement);
-          link(partners, rightElement, leftElement);
+          link(partners, leftElement, rightElement, tag);
+          link(partners, rightElement, leftElement, tag);
         }
       }
     }
@@ -113,8 +115,9 @@ public final class VsumState {
     return elements;
   }
 
-  private static void link(Map<EObject, Set<EObject>> partners, EObject from, EObject to) {
-    partners.computeIfAbsent(from, key -> new LinkedHashSet<>()).add(to);
+  private static void link(
+      Map<EObject, Set<Partner>> partners, EObject from, EObject to, String tag) {
+    partners.computeIfAbsent(from, key -> new LinkedHashSet<>()).add(new Partner(to, tag));
   }
 
   public Path folder() {
@@ -133,7 +136,9 @@ public final class VsumState {
     return partners.containsKey(element);
   }
 
-  public Collection<EObject> partnersOf(EObject element) {
+  public Collection<Partner> partnersOf(EObject element) {
     return partners.getOrDefault(element, Set.of());
   }
+
+  public record Partner(EObject element, String tag) {}
 }

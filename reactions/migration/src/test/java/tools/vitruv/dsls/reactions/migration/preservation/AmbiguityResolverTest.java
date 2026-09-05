@@ -10,13 +10,16 @@ import java.util.Optional;
 import org.eclipse.emf.ecore.EObject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import pcm_mockup.PInterface;
 import pcm_mockup.Pcm_mockupFactory;
 import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.change.interaction.UserInteractionOptions.InputValidator;
 import tools.vitruv.change.interaction.UserInteractionOptions.NotificationType;
 import tools.vitruv.change.interaction.UserInteractionOptions.WindowModality;
+import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 
+@ExtendWith(RegisterMetamodelsInStandalone.class)
 class AmbiguityResolverTest {
   private static final Path FOLDER = Path.of("vsum");
 

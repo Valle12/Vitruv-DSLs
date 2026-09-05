@@ -2,7 +2,6 @@ package tools.vitruv.dsls.reactions.migration.migration;
 
 import java.util.*;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.resource.Resource;
 
 final class ModelGroups {
   private ModelGroups() {}
@@ -16,16 +15,5 @@ final class ModelGroups {
     }
 
     return grouped;
-  }
-
-  static Set<Resource> resourcesOf(Collection<EObject> roots) {
-    Set<Resource> resources = new LinkedHashSet<>();
-    for (EObject root : roots) {
-      if (root.eResource() != null) {
-        resources.add(root.eResource());
-      }
-    }
-
-    return resources;
   }
 }

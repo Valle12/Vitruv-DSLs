@@ -15,10 +15,13 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import tools.vitruv.change.testutils.RegisterMetamodelsInStandalone;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
 
+@ExtendWith(RegisterMetamodelsInStandalone.class)
 class CandidateCollectorTest {
   private static final String MODEL_FILE = "model.allelementtypes";
   private static final AdapterRegistry ADAPTERS = new AdapterRegistry();

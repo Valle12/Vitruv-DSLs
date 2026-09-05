@@ -1,0 +1,9 @@
+import "http://example.org/alpha" as alpha
+import "http://example.org/beta" as beta
+
+reactions: aggregate
+in reaction to changes in alpha
+execute actions in beta
+
+import caller using qualified names
+import qualified using qualified names
