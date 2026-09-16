@@ -18,6 +18,12 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
+/**
+ * Walks the state from before the migration and collects the values the migrated models no
+ * longer hold, together with the place each would go. What no counterpart can take is recorded
+ * as a loss rather than silently dropped, and under a policy short of {@code all} the content
+ * a consistency rule produced is passed over.
+ */
 @RequiredArgsConstructor
 final class CandidateCollector {
   private static final String IS_NOW_FORMAT = "%s is now %s";

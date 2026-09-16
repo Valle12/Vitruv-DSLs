@@ -6,6 +6,10 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 
+/**
+ * The target of a run that only reports. It works on the models as they were loaded from the
+ * migrated folder, so that nothing reaches the V-SUM.
+ */
 @RequiredArgsConstructor
 final class AnalysisTransplantTarget implements TransplantTarget {
   private final VsumState migratedState;

@@ -4,6 +4,10 @@ import java.util.List;
 import tools.vitruv.dsls.reactions.migration.graph.DominancePlan;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 
+/**
+ * Thrown when re-deriving the derived models fails. It carries the plan the run was following,
+ * so that a report can still name the metamodels involved and how the dominant one was chosen.
+ */
 public final class MigrationFailure extends RuntimeException {
   private final transient List<MetamodelNode> sources;
   private final transient List<MetamodelNode> derived;
@@ -27,14 +31,29 @@ public final class MigrationFailure extends RuntimeException {
     return nodes.stream().map(MetamodelNode::shortName).toList();
   }
 
+  /**
+   * Returns the metamodels the failed run was deriving from.
+   *
+   * @return the sources of its plan
+   */
   public List<MetamodelNode> sources() {
     return sources;
   }
 
+  /**
+   * Returns the metamodels the failed run was rebuilding.
+   *
+   * @return the derived metamodels of its plan
+   */
   public List<MetamodelNode> derived() {
     return derived;
   }
 
+  /**
+   * Returns how the dominant model of the failed run was chosen.
+   *
+   * @return its source selection
+   */
   public SourceSelection selection() {
     return selection;
   }

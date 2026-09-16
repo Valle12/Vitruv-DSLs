@@ -10,9 +10,20 @@ import tools.vitruv.change.atomic.uuid.UuidResolver;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/** Gives every element of a V-SUM an identifier before a selective migration begins. */
 public final class UuidPreRegistration {
   private UuidPreRegistration() {}
 
+  /**
+   * Resolves every proxy of the migrated models and registers each element that carries no
+   * identifier yet, so that a later teardown and re-insertion can name elements the V-SUM has
+   * never propagated.
+   *
+   * @param vsum the V-SUM to register in
+   * @param adapters the metamodel adapters
+   * @param vsumFolder the folder of the V-SUM
+   * @return how many elements were newly registered
+   */
   public static int registerAllLiveElements(
       InternalVirtualModel vsum, AdapterRegistry adapters, Path vsumFolder) {
     for (Resource resource : coveredResources(vsum, adapters, vsumFolder)) {

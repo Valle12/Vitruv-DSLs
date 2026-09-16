@@ -22,6 +22,12 @@ import org.emftext.language.java.containers.Package;
 import org.emftext.language.java.resource.java.IJavaOptions;
 import tools.vitruv.applications.util.temporary.java.JavaSetup;
 
+/**
+ * Adapts the migration to the JaMoPP representation of Java. A Java model is kept as source
+ * text rather than as XMI, it resolves its types against a class path that a detached model
+ * still points into, and it has to be built through recorded changes, all of which this adapter
+ * handles behind the hooks of {@link MetamodelAdapter}.
+ */
 public class JavaModelAdapter implements MetamodelAdapter {
   @SuppressWarnings("HttpUrlsUsage")
   private static final String JAMOPP_NS_PREFIX = "http://www.emftext.org/java";

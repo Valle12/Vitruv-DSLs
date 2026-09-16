@@ -31,6 +31,12 @@ import tools.vitruv.framework.views.View;
 import tools.vitruv.framework.views.changederivation.DefaultStateBasedChangeResolutionStrategy;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/**
+ * Carries information that only the old derived models held back into the dominant model. A
+ * round mirrors the old derived state into a scratch V-SUM, propagates it, and merges the
+ * result onto the live models, and the rounds repeat until one of them changes nothing or the
+ * round limit is reached.
+ */
 @Slf4j
 @RequiredArgsConstructor
 class SourceUpdater {

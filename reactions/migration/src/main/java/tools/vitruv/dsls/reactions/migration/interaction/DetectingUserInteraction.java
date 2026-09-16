@@ -8,6 +8,11 @@ import tools.vitruv.change.interaction.UserInteractionOptions.InputValidator;
 import tools.vitruv.change.interaction.UserInteractionOptions.NotificationType;
 import tools.vitruv.change.interaction.UserInteractionOptions.WindowModality;
 
+/**
+ * Records every interaction a reaction asks the caller for while the migration runs. Without a
+ * fallback the first request ends the migration, with one the request is recorded and then
+ * handed on, so that a run can report what it was asked even when it kept going.
+ */
 @Slf4j
 public class DetectingUserInteraction implements InteractionResultProvider {
   private static final String CONFIRMATION = "confirmation";
@@ -17,14 +22,26 @@ public class DetectingUserInteraction implements InteractionResultProvider {
   private final List<String> requestedInteractions = new ArrayList<>();
   private final InteractionResultProvider fallback;
 
+  /** Creates a provider that records a request and then ends the migration with it. */
   public DetectingUserInteraction() {
     this(null);
   }
 
+  /**
+   * Creates a provider that records a request and then lets the given fallback answer it.
+   *
+   * @param fallback the provider answering the request, or {@code null} to end the migration on
+   *     the first one
+   */
   public DetectingUserInteraction(InteractionResultProvider fallback) {
     this.fallback = fallback;
   }
 
+  /**
+   * Returns what the reactions have asked for so far.
+   *
+   * @return one description per request, in the order the requests were made
+   */
   public List<String> getRequestedInteractions() {
     return List.copyOf(requestedInteractions);
   }

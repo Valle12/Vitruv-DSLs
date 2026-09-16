@@ -13,6 +13,10 @@ import tools.vitruv.framework.views.CommittableView;
 import tools.vitruv.framework.views.View;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/**
+ * Inserts a snapshot into a V-SUM by committing its roots through a view, so that the rules of
+ * the new rule set derive the other models from them.
+ */
 @RequiredArgsConstructor
 public class Replayer {
   private final AdapterRegistry adapters;
@@ -30,6 +34,15 @@ public class Replayer {
     }
   }
 
+  /**
+   * Commits every root of the given snapshot into the V-SUM. References that leave their own
+   * resource are detached before the roots are registered and put back before the changes are
+   * committed. Whether the changes are recorded or derived follows from the metamodels involved.
+   *
+   * @param vsum the V-SUM to insert into
+   * @param snapshot the detached models to insert, which may be empty
+   * @throws IllegalStateException if the view cannot be closed afterwards
+   */
   public void replayInto(InternalVirtualModel vsum, ModelSnapshot snapshot) {
     Map<URI, List<EObject>> rootsByUri = snapshot.rootsByUri();
     if (rootsByUri.isEmpty()) {

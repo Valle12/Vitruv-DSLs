@@ -9,6 +9,22 @@ import tools.vitruv.dsls.reactions.migration.migration.MigrationMode;
 import tools.vitruv.dsls.reactions.migration.preservation.PreservationPolicy;
 import tools.vitruv.dsls.reactions.migration.strategy.StrategyChoice;
 
+/**
+ * Everything one migration run was asked to do, with the defaults already applied.
+ *
+ * @param vsumFolder the folder of the persisted V-SUM, which is migrated in place
+ * @param specificationsJar the jar holding the rule set to migrate to
+ * @param strategy how the dominant model is chosen
+ * @param dominantToken the metamodel the caller declared dominant, present only for the
+ *     explicit strategy
+ * @param sourceUpdate whether a full migration carries information that only the old derived
+ *     models held back into the dominant one
+ * @param maxSourceUpdateRounds how often that may be repeated before the update gives up
+ * @param backup whether the folder is copied aside before the migration touches it
+ * @param mode whether every rule is replayed or only the elements the changed rules reach
+ * @param preservation how far content no rule produced is carried over
+ * @param ask whether an ambiguous placement may be put to the caller
+ */
 public record MigrationOptions(
     Path vsumFolder,
     Path specificationsJar,
@@ -25,6 +41,14 @@ public record MigrationOptions(
   public static final int DEFAULT_MAX_ROUNDS = 3;
   public static final MigrationMode DEFAULT_MODE = MigrationMode.ID_DIFF;
 
+  /**
+   * Reads the options from the command line, applying a default wherever it names none.
+   *
+   * @param commandLine the arguments the migration was started with
+   * @return the options of the run
+   * @throws UsageException if a required option is missing, a folder or jar cannot be used, or
+   *     a value is not one the option accepts
+   */
   public static MigrationOptions parse(CommandLine commandLine) {
     Path vsumFolder = requiredExistingFolder(commandLine);
     Path specificationsJar = requiredSpecificationsJar(commandLine);

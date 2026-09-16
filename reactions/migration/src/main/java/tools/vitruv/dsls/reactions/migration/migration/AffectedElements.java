@@ -16,6 +16,11 @@ import tools.vitruv.change.atomic.EChange;
 import tools.vitruv.change.propagation.ConsistencyRuleId;
 import tools.vitruv.change.propagation.ConsistencyRuleTriggerMatcher;
 
+/**
+ * Finds the elements a dirty rule's trigger matches, together with the elements that refer to
+ * them and therefore have to be repropagated as well. An element below one that is already
+ * selected is left out, because its whole subtree goes along anyway.
+ */
 final class AffectedElements {
   @SuppressWarnings("unused")
   private AffectedElements() {}

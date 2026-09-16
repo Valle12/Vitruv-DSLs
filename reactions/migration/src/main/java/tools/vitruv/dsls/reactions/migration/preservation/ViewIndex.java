@@ -11,6 +11,10 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import tools.vitruv.framework.views.View;
 
+/**
+ * Finds the element of a view that stands for an element read from a model file, by matching
+ * them on the file they live in and their path inside it.
+ */
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 final class ViewIndex {
   private final Map<String, List<EObject>> rootsByResourceKey;

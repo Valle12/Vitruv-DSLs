@@ -12,6 +12,11 @@ import java.util.function.Predicate;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
+/**
+ * Which element of the migrated models continues which element of the state before the
+ * migration. The pairing goes through the correspondences of both states, so two elements are
+ * counterparts when the same element of the dominant model answers for them.
+ */
 public final class CounterpartIndex {
   private final Map<EObject, EObject> counterparts;
 
@@ -19,6 +24,17 @@ public final class CounterpartIndex {
     this.counterparts = counterparts;
   }
 
+  /**
+   * Pairs the derived elements of the old state with those of the new one. An element of the
+   * new state is claimed by at most one old element, and where several could be the counterpart
+   * the resolver is asked.
+   *
+   * @param oldState the state from before the migration
+   * @param newState the state the migration produced
+   * @param derivedRoot decides whether a root belongs to a model that was re-derived
+   * @param resolver what settles an ambiguous pairing, or records it as undecided
+   * @return the pairing of the two states
+   */
   public static CounterpartIndex build(
       VsumState oldState,
       VsumState newState,
@@ -119,6 +135,12 @@ public final class CounterpartIndex {
     return resolver.chooseCounterpart(oldElement, sameMetaclass);
   }
 
+  /**
+   * Returns the roots of the migrated models that continue the given old root.
+   *
+   * @param oldRoot a root of the state from before the migration
+   * @return its counterpart roots, empty when the migration derives none
+   */
   public List<EObject> counterpartRootsOf(EObject oldRoot) {
     Map<EObject, Integer> votes = new IdentityHashMap<>();
     List<EObject> voted = new ArrayList<>();
@@ -139,14 +161,32 @@ public final class CounterpartIndex {
     return voted.stream().filter(root -> votes.get(root) == most).toList();
   }
 
+  /**
+   * Returns the migrated element that continues the given old one.
+   *
+   * @param oldElement an element of the state from before the migration
+   * @return its counterpart, or {@code null} when it has none
+   */
   public EObject counterpartOf(EObject oldElement) {
     return counterparts.get(oldElement);
   }
 
+  /**
+   * Records a pairing the index did not find by itself, such as one an element restored by the
+   * preservation step establishes.
+   *
+   * @param oldElement an element of the state from before the migration
+   * @param newElement the migrated element that continues it
+   */
   public void addCounterpart(EObject oldElement, EObject newElement) {
     counterparts.put(oldElement, newElement);
   }
 
+  /**
+   * Returns how many elements were paired.
+   *
+   * @return the number of counterparts
+   */
   public int size() {
     return counterparts.size();
   }

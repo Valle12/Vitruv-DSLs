@@ -4,6 +4,10 @@ import java.util.Arrays;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * The arguments a migration was started with, read by option name rather than by position, so
+ * that the options may be given in any order and under either their long or their short name.
+ */
 @RequiredArgsConstructor
 public class CommandLine {
   public static final String HELP = "--help";
@@ -27,6 +31,7 @@ public class CommandLine {
   public static final String ASK = "--ask";
   private final String[] args;
 
+  /** The help text printed for {@code --help}, naming every option, its values and its default. */
   public static final String USAGE =
       """
         Usage: migration --model/-m <folder> --propagations/-p <jar> [options]
@@ -65,10 +70,23 @@ public class CommandLine {
     return flag(HELP, HELP_SHORT);
   }
 
+  /**
+   * Returns the value following the given option.
+   *
+   * @param name the option, which has no short form
+   * @return the argument after it, empty when the option was not given
+   */
   public Optional<String> value(String name) {
     return value(name, name);
   }
 
+  /**
+   * Returns the value following the given option under either of its names.
+   *
+   * @param longName the long form of the option
+   * @param shortName the short form of the option
+   * @return the argument after its first occurrence, empty when neither name was given
+   */
   public Optional<String> value(String longName, String shortName) {
     for (int i = 0; i < args.length - 1; i++) {
       if (longName.equals(args[i]) || shortName.equals(args[i])) {
@@ -79,6 +97,13 @@ public class CommandLine {
     return Optional.empty();
   }
 
+  /**
+   * Returns whether the given option is present under either of its names.
+   *
+   * @param longName the long form of the option
+   * @param shortName the short form of the option
+   * @return whether the option was given
+   */
   public boolean flag(String longName, String shortName) {
     return Arrays.stream(args).anyMatch(arg -> longName.equals(arg) || shortName.equals(arg));
   }

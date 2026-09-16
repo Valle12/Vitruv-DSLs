@@ -21,6 +21,10 @@ import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
 import tools.vitruv.framework.views.View;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/**
+ * What a dominance strategy may ask about the run in progress, together with the record of the
+ * trials its questions set off and the scratch folders those trials left behind.
+ */
 @RequiredArgsConstructor
 final class RunnerContext implements DominanceContext {
   private final PropagationGraph graph;

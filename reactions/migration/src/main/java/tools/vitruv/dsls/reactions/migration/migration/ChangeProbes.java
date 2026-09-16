@@ -9,6 +9,10 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import tools.vitruv.change.atomic.EChange;
 import tools.vitruv.change.atomic.TypeInferringAtomicEChangeFactory;
 
+/**
+ * Builds the changes that would have brought an element about, so that the trigger of a rule
+ * can be held against an element the V-SUM already holds without anything being changed.
+ */
 final class ChangeProbes {
   private static final TypeInferringAtomicEChangeFactory FACTORY =
       TypeInferringAtomicEChangeFactory.getInstance();

@@ -21,6 +21,12 @@ import org.eclipse.emf.ecore.util.EcoreUtil.UsageCrossReferencer;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.framework.views.CommittableView;
 
+/**
+ * Tears the affected elements out of the V-SUM and inserts copies of them again, so that the
+ * new rules derive their counterparts afresh. Containment positions and the references that
+ * point at the elements are captured beforehand and restored afterwards, and a deletion that
+ * would take a platform library with it is refused.
+ */
 final class SelectiveRepropagation {
   private static final List<String> UNASSIGNABLE_ID_MARKERS =
       List.of("trying to assign UUID for unknown element", "dangling object");

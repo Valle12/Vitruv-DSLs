@@ -9,6 +9,10 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.adapter.ResourcePaths;
 
+/**
+ * Recognizes references that leave the V-SUM, such as one into a platform library, and names
+ * their target in a way that stays valid across the migration.
+ */
 @RequiredArgsConstructor
 final class ExternalTargets {
   private final AdapterRegistry adapters;

@@ -26,6 +26,11 @@ import tools.vitruv.change.correspondence.Correspondences;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.framework.vsum.helper.VsumFileSystemLayout;
 
+/**
+ * One state of a V-SUM read straight from its folder, with the models keyed by file and the
+ * correspondences between their elements resolved. Reading from the folder rather than from a
+ * running V-SUM is what lets the state from before a migration be compared with the one after.
+ */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class VsumState {
@@ -35,6 +40,13 @@ public final class VsumState {
 
   @Getter private final ResourceSet resourceSet;
 
+  /**
+   * Reads the models and the correspondences of the V-SUM in the given folder.
+   *
+   * @param folder the folder of the persisted V-SUM
+   * @param adapters the metamodel adapters
+   * @return the state the folder holds
+   */
   public static VsumState load(Path folder, AdapterRegistry adapters) {
     ResourceSet resourceSet = adapters.newResourceSet();
     Map<String, List<EObject>> rootsByResourceKey = loadModels(folder, adapters, resourceSet);
@@ -120,25 +132,59 @@ public final class VsumState {
     partners.computeIfAbsent(from, key -> new LinkedHashSet<>()).add(new Partner(to, tag));
   }
 
+  /**
+   * Returns where this state was read from.
+   *
+   * @return the folder of the V-SUM
+   */
   public Path folder() {
     return folder;
   }
 
+  /**
+   * Returns the model files of this state, each as a path relative to the folder.
+   *
+   * @return the keys under which the models are held
+   */
   public Set<String> resourceKeys() {
     return rootsByResourceKey.keySet();
   }
 
+  /**
+   * Returns the roots the given model file holds.
+   *
+   * @param resourceKey the path of the file relative to the folder
+   * @return its roots, empty when this state holds no such file
+   */
   public List<EObject> rootsOf(String resourceKey) {
     return rootsByResourceKey.getOrDefault(resourceKey, List.of());
   }
 
+  /**
+   * Returns whether a consistency rule produced or is answerable for the given element.
+   *
+   * @param element the element to look up
+   * @return whether a correspondence names it
+   */
   public boolean isCorresponded(EObject element) {
     return partners.containsKey(element);
   }
 
+  /**
+   * Returns the elements the given one corresponds to in the other models.
+   *
+   * @param element the element to look up
+   * @return its partners, empty when no correspondence names it
+   */
   public Collection<Partner> partnersOf(EObject element) {
     return partners.getOrDefault(element, Set.of());
   }
 
+  /**
+   * The other side of one correspondence, with the tag the rule recorded it under.
+   *
+   * @param element the element on the other side of the correspondence
+   * @param tag the tag the consistency rule recorded it under
+   */
   public record Partner(EObject element, String tag) {}
 }

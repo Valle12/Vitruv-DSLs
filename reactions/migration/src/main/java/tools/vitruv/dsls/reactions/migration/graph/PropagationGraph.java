@@ -13,9 +13,18 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import tools.vitruv.change.propagation.ChangePropagationSpecification;
 
+/**
+ * Which metamodel a rule set propagates into which other, with one node per metamodel and one
+ * edge per change propagation specification.
+ */
 public class PropagationGraph {
   private final Map<MetamodelNode, Set<MetamodelNode>> outgoing = new HashMap<>();
 
+  /**
+   * Builds the graph of the given rule set.
+   *
+   * @param specifications the change propagation specifications the rule set compiles to
+   */
   public PropagationGraph(List<ChangePropagationSpecification> specifications) {
     for (ChangePropagationSpecification specification : specifications) {
       MetamodelNode source = MetamodelNode.of(specification.getSourceMetamodelDescriptor());
@@ -25,14 +34,31 @@ public class PropagationGraph {
     }
   }
 
+  /**
+   * Returns every metamodel the rule set mentions, whether it propagates from it or into it.
+   *
+   * @return the nodes of the graph
+   */
   public Set<MetamodelNode> nodes() {
     return Set.copyOf(outgoing.keySet());
   }
 
+  /**
+   * Returns into how many metamodels the given one propagates directly.
+   *
+   * @param node the metamodel to count for
+   * @return the number of outgoing edges
+   */
   public int outDegree(MetamodelNode node) {
     return outgoing.getOrDefault(node, Set.of()).size();
   }
 
+  /**
+   * Returns the metamodels reachable from the given one along any number of propagations.
+   *
+   * @param start the metamodel to start at
+   * @return the reachable metamodels, which contain the start itself only when it lies on a cycle
+   */
   public Set<MetamodelNode> reachableFrom(MetamodelNode start) {
     Set<MetamodelNode> reachable = new LinkedHashSet<>();
     Deque<MetamodelNode> queue = new ArrayDeque<>(outgoing.getOrDefault(start, Set.of()));
@@ -46,12 +72,25 @@ public class PropagationGraph {
     return reachable;
   }
 
+  /**
+   * Returns whether each of the given metamodels either is the start or is reachable from it.
+   *
+   * @param start the metamodel to start at
+   * @param targets the metamodels that have to be reached
+   * @return whether every one of them is reached
+   */
   public boolean reachesAll(MetamodelNode start, Set<MetamodelNode> targets) {
     Set<MetamodelNode> reachable = reachableFrom(start);
     return targets.stream()
         .allMatch(target -> target.equals(start) || reachable.contains(target));
   }
 
+  /**
+   * Returns the node that owns the given namespace URI.
+   *
+   * @param nsUri the namespace URI to look up
+   * @return the owning node, empty when no node of the graph owns it
+   */
   public Optional<MetamodelNode> nodeContaining(String nsUri) {
     return outgoing.keySet().stream().filter(node -> node.owns(nsUri)).findFirst();
   }

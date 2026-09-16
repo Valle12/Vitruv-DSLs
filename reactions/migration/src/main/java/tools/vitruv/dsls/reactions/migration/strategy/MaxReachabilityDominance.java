@@ -7,6 +7,11 @@ import java.util.Set;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 import tools.vitruv.dsls.reactions.migration.graph.PropagationGraph;
 
+/**
+ * Chooses the dominant model with the widest reach. A metamodel that reaches every other
+ * present one is preferred, and among equals the one propagating into the most metamodels
+ * directly wins.
+ */
 public class MaxReachabilityDominance implements DominanceStrategy {
   private static long countReachablePresent(
       PropagationGraph graph, MetamodelNode node, Set<MetamodelNode> presentNodes) {

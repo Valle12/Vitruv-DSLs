@@ -3,6 +3,10 @@ package tools.vitruv.dsls.reactions.migration.preservation;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Why a value could not be carried over into the migrated models. Each reason carries the
+ * wording the preservation report uses for it.
+ */
 @Getter
 @RequiredArgsConstructor
 public enum LossReason {

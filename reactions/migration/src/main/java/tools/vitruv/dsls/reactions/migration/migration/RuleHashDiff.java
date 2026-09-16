@@ -6,6 +6,10 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import tools.vitruv.change.propagation.ConsistencyRuleId;
 
+/**
+ * Which rules were added, removed or changed between the registry of a V-SUM and the new rule
+ * set. Which of the three count as dirty depends on the migration mode.
+ */
 record RuleHashDiff(
     SortedSet<ConsistencyRuleId> added,
     SortedSet<ConsistencyRuleId> removed,

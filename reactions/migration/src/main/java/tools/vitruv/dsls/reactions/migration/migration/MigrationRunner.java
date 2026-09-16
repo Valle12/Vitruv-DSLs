@@ -52,6 +52,12 @@ import tools.vitruv.framework.views.View;
 import tools.vitruv.framework.vsum.helper.VsumFileSystemLayout;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/**
+ * Carries a V-SUM over to a new rule set. A full migration re-derives every derived model from
+ * the dominant one, whereas a selective migration follows only the rules that differ from the
+ * ones the V-SUM was last propagated with and repropagates what those rules reach. Whenever the
+ * selective path cannot be taken, the run falls back to a full migration.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class MigrationRunner {
@@ -291,6 +297,13 @@ public class MigrationRunner {
     }
   }
 
+  /**
+   * Migrates the V-SUM in the given folder in place.
+   *
+   * @param vsumFolder the folder of the persisted V-SUM
+   * @return what the run did, including the phases it spent its time in
+   * @throws MigrationFailure if re-deriving the derived models fails
+   */
   public MigrationReport run(Path vsumFolder) {
     PhaseTimer timer = new PhaseTimer();
     Vsums.normalizeModelRegistry(vsumFolder);

@@ -23,6 +23,11 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 
+/**
+ * Merges the state the old derived models imply into the live dominant model, splitting the
+ * difference into what adds content and what takes content away. Both are applied, but the
+ * removals are described as well, so that a run can report what the update took out.
+ */
 final class SourceStateMerge {
   private static final EMFCompare COMPARE = structuralCompare();
   private static final IMerger.Registry MERGERS = IMerger.RegistryImpl.createStandaloneInstance();

@@ -22,6 +22,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import tools.vitruv.change.propagation.ChangePropagationSpecification;
 
+/**
+ * Loads change propagation specifications out of a jar. The classes of the rule set are taken
+ * from that jar even when classes of the same name are already on the class path, so that two
+ * configurations of one rule set do not shadow each other.
+ */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class JarSpecificationSource implements SpecificationSource, Closeable {
@@ -30,10 +35,29 @@ public class JarSpecificationSource implements SpecificationSource, Closeable {
   private final List<Constructor<?>> specificationConstructors;
   private final ConfigurationScopedClassLoader loader;
 
+  /**
+   * Opens the given jar as a source of specifications.
+   *
+   * @param propagationsJar the jar holding the compiled rule set
+   * @return the opened source, which has to be closed once the migration is done with it
+   * @throws IOException if the jar cannot be read
+   */
   public static JarSpecificationSource fromJar(Path propagationsJar) throws IOException {
     return fromJar(propagationsJar, List.of());
   }
 
+  /**
+   * Opens the given jar as a source of specifications, counting the given package prefixes as
+   * part of the rule configuration on top of the packages the specifications themselves live in.
+   * A class below such a prefix is taken from the jar even when the class path already offers one
+   * of the same name.
+   *
+   * @param propagationsJar the jar holding the compiled rule set
+   * @param additionalChildFirstPrefixes further package prefixes to read from the jar first
+   * @return the opened source, which has to be closed once the migration is done with it
+   * @throws IOException if the jar cannot be read
+   * @throws IllegalStateException if the jar holds no specification that can be instantiated
+   */
   public static JarSpecificationSource fromJar(
       Path propagationsJar, Collection<String> additionalChildFirstPrefixes) throws IOException {
     if (!Files.isRegularFile(propagationsJar)) {

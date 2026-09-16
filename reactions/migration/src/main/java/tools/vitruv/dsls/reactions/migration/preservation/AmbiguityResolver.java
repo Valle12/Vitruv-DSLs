@@ -10,6 +10,11 @@ import org.eclipse.emf.ecore.EStructuralFeature;
 import tools.vitruv.change.interaction.InteractionResultProvider;
 import tools.vitruv.change.interaction.UserInteractionOptions.WindowModality;
 
+/**
+ * Settles the placements the preservation step cannot decide on its own, either by putting
+ * them to the caller or by recording them as open decisions. Every question and every answer
+ * is kept, so that the report says what was decided and by whom.
+ */
 @Slf4j
 public final class AmbiguityResolver {
   private static final String TITLE = "Migration: preserving derived content";
@@ -29,11 +34,27 @@ public final class AmbiguityResolver {
     this.newFolder = newFolder;
   }
 
+  /**
+   * Creates a resolver that puts an ambiguous placement to the caller.
+   *
+   * @param interaction what answers the question
+   * @param oldFolder the folder of the state from before the migration
+   * @param newFolder the folder of the migrated V-SUM
+   * @return the resolver
+   */
   public static AmbiguityResolver asking(
       InteractionResultProvider interaction, Path oldFolder, Path newFolder) {
     return new AmbiguityResolver(interaction, oldFolder, newFolder);
   }
 
+  /**
+   * Creates a resolver that asks nobody and records every ambiguous placement as an open
+   * decision.
+   *
+   * @param oldFolder the folder of the state from before the migration
+   * @param newFolder the folder of the migrated V-SUM
+   * @return the resolver
+   */
   public static AmbiguityResolver reporting(Path oldFolder, Path newFolder) {
     return new AmbiguityResolver(null, oldFolder, newFolder);
   }
@@ -42,6 +63,11 @@ public final class AmbiguityResolver {
     return "%s : %s".formatted(feature.getName(), feature.getEType().getName());
   }
 
+  /**
+   * Returns whether this resolver has anybody to ask.
+   *
+   * @return whether a question can be answered rather than only recorded
+   */
   public boolean resolves() {
     return interaction != null;
   }
@@ -50,6 +76,11 @@ public final class AmbiguityResolver {
     return interaction != null && !providerFailed;
   }
 
+  /**
+   * Returns what was decided and what was left open so far.
+   *
+   * @return one entry per question the resolver was given
+   */
   public List<DecisionItem> decisions() {
     return List.copyOf(decisions);
   }

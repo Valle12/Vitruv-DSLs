@@ -20,6 +20,12 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.util.EcoreUtil.Copier;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 
+/**
+ * Puts the collected content back into the migrated models. Each value is placed only where a
+ * slot has room for it, its references are rebound to migrated elements first, and anything
+ * that turns out not to fit or that makes the model invalid is taken out again and recorded
+ * as lost.
+ */
 @RequiredArgsConstructor
 final class TransplantApplier {
   private static final String REFERENCES_CONTENT_NOT_KEPT =

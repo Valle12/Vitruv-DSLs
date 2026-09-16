@@ -7,7 +7,12 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Writes the preservation report, which lists what a migration carried over, what it could not
+ * keep and which questions nobody answered.
+ */
 public final class PreservationReportWriter {
+  /** The name the report is written under, inside the folder it describes. */
   public static final String FILE_NAME = "preservation-report.md";
 
   private static final String OPEN_DECISIONS_INTRO =
@@ -49,6 +54,15 @@ public final class PreservationReportWriter {
 
   private PreservationReportWriter() {}
 
+  /**
+   * Writes the report into the given folder, overwriting one an earlier run left there.
+   *
+   * @param folder the folder to write into
+   * @param outcome what the preservation step came to
+   * @param location which folder the paths in the report are relative to
+   * @return the file that was written
+   * @throws UncheckedIOException if the file cannot be written
+   */
   public static Path write(Path folder, PreservationOutcome outcome, Location location) {
     Path file = folder.resolve(FILE_NAME);
     try {
@@ -211,8 +225,11 @@ public final class PreservationReportWriter {
     }
   }
 
+  /** Which state the paths of a report point into. */
   public enum Location {
+    /** The copy of the folder as it was before the migration. */
     RECOVERY_FOLDER,
+    /** The migrated V-SUM itself. */
     VSUM_FOLDER
   }
 }

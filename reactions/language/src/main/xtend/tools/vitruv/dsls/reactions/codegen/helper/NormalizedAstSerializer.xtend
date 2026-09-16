@@ -25,6 +25,12 @@ class NormalizedAstSerializer {
 	static val String NULL_TOKEN = "<null>"
 	static val String DOCUMENTATION_FEATURE_NAME = "documentation"
 
+	/**
+	 * Serializes the subtree below the given element.
+	 *
+	 * @param root the element to serialize
+	 * @return the normalized serialization of the subtree
+	 */
 	def String serialize(EObject root) {
 		val builder = new StringBuilder()
 		serializeElement(root, builder)

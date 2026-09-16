@@ -24,12 +24,25 @@ import tools.vitruv.framework.vsum.VirtualModelBuilder;
 import tools.vitruv.framework.vsum.helper.VsumFileSystemLayout;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/**
+ * Builds V-SUMs and opens views on them, including the registration a run outside an Eclipse
+ * workbench has to perform for itself.
+ */
 @Slf4j
 public final class Vsums {
   private static final String VSUM_METADATA_FOLDER = "vsum";
 
   private Vsums() {}
 
+  /**
+   * Builds a V-SUM over the given folder that propagates with the given rule set.
+   *
+   * @param folder the storage folder of the V-SUM
+   * @param specifications the rule set to propagate with
+   * @param interaction what answers an interaction a reaction asks for
+   * @return the initialized V-SUM
+   * @throws UncheckedIOException if the V-SUM cannot be built
+   */
   public static InternalVirtualModel build(
       Path folder,
       List<ChangePropagationSpecification> specifications,
@@ -45,6 +58,13 @@ public final class Vsums {
     }
   }
 
+  /**
+   * Drops the entries of the V-SUM's model registry that name no file, such as a platform
+   * library an earlier run recorded, and leaves a V-SUM without a registry untouched.
+   *
+   * @param folder the folder of the persisted V-SUM
+   * @throws UncheckedIOException if the registry cannot be rewritten
+   */
   public static void normalizeModelRegistry(Path folder) {
     if (!Files.isDirectory(folder.resolve(VSUM_METADATA_FOLDER))) {
       return;
@@ -73,16 +93,36 @@ public final class Vsums {
     }
   }
 
+  /**
+   * Registers what EMF and the metamodels need when no Eclipse workbench provides it.
+   *
+   * @param adapters the metamodel adapters to prepare along with EMF
+   */
   public static void prepareStandalone(AdapterRegistry adapters) {
     EcorePlugin.ExtensionProcessor.process(null);
     adapters.prepareStandalone();
     registerFallbackXmiFactory();
   }
 
+  /**
+   * Opens a view holding every element the V-SUM offers.
+   *
+   * @param provider the V-SUM to open the view on
+   * @param name the name the view type is created under
+   * @return the opened view
+   */
   public static View openViewOfAll(ViewProvider provider, String name) {
     return openViewOf(provider, name, element -> true);
   }
 
+  /**
+   * Opens a view holding the elements the given filter accepts.
+   *
+   * @param provider the V-SUM to open the view on
+   * @param name the name the view type is created under
+   * @param rootFilter decides for each selectable element whether the view holds it
+   * @return the opened view
+   */
   public static View openViewOf(ViewProvider provider, String name, Predicate<EObject> rootFilter) {
     ViewSelector selector =
         provider.createSelector(ViewTypeFactory.createIdentityMappingViewType(name));
@@ -92,12 +132,25 @@ public final class Vsums {
     return selector.createView();
   }
 
+  /**
+   * Opens a view holding nothing, which elements may then be committed into.
+   *
+   * @param provider the V-SUM to open the view on
+   * @param name the name the view type is created under
+   * @return the opened view
+   */
   public static View openEmptyView(ViewProvider provider, String name) {
     return provider
         .createSelector(ViewTypeFactory.createIdentityMappingViewType(name))
         .createView();
   }
 
+  /**
+   * Returns the roots the V-SUM holds itself, read without opening a view.
+   *
+   * @param vsum the V-SUM to read
+   * @return the roots of its source models
+   */
   public static List<EObject> liveRoots(InternalVirtualModel vsum) {
     List<EObject> roots = new ArrayList<>();
     for (Resource resource : List.copyOf(vsum.getViewSourceModels())) {
@@ -107,6 +160,13 @@ public final class Vsums {
     return roots;
   }
 
+  /**
+   * Returns the roots of the V-SUM, read through a view that is closed again straight away.
+   *
+   * @param provider the V-SUM to read
+   * @return its root objects
+   * @throws IllegalStateException if the view cannot be opened or read
+   */
   public static List<EObject> readRoots(ViewProvider provider) {
     try (View view = openViewOfAll(provider, "read-all")) {
       return new ArrayList<>(view.getRootObjects());

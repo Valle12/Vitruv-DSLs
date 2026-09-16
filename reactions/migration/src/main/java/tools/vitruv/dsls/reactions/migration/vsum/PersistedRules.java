@@ -13,10 +13,24 @@ import tools.vitruv.change.propagation.RuleHashRegistry;
 import tools.vitruv.change.utils.ResourceAccess;
 import tools.vitruv.framework.vsum.helper.VsumFileSystemLayout;
 
+/**
+ * The rule state a V-SUM has recorded, read from its registry.
+ *
+ * @param hashes the semantic hash of each rule the last propagation ran with
+ * @param triggers the trigger summary of each of those rules
+ */
 public record PersistedRules(
     Map<ConsistencyRuleId, String> hashes,
     Map<ConsistencyRuleId, ConsistencyRuleTrigger> triggers) {
 
+  /**
+   * Reads the registry of the V-SUM in the given folder. A V-SUM that has never recorded its
+   * rules yields empty maps rather than an error.
+   *
+   * @param vsumProjectFolder the folder of the persisted V-SUM
+   * @return the recorded rule state
+   * @throws UncheckedIOException if the registry cannot be read
+   */
   public static PersistedRules load(Path vsumProjectFolder) {
     VsumFileSystemLayout layout = new VsumFileSystemLayout(vsumProjectFolder);
     try {

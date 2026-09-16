@@ -8,6 +8,10 @@ import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * A copy of a V-SUM folder taken before the migration touches it, so that a run which fails
+ * part way through can be undone.
+ */
 @Slf4j
 public final class VsumBackup {
   private final Path sourceFolder;
@@ -18,6 +22,13 @@ public final class VsumBackup {
     this.backupFolder = backupFolder;
   }
 
+  /**
+   * Copies the given folder to a sibling folder named after it and the current time.
+   *
+   * @param folder the V-SUM folder to back up
+   * @return the backup that was taken
+   * @throws IOException if the folder cannot be copied
+   */
   public static VsumBackup create(Path folder) throws IOException {
     String name = folder.getFileName().toString();
     Path backupFolder =
@@ -27,6 +38,13 @@ public final class VsumBackup {
     return new VsumBackup(folder, backupFolder);
   }
 
+  /**
+   * Copies a folder tree, overwriting the files the target folder already holds.
+   *
+   * @param source the folder to copy
+   * @param target the folder to copy into
+   * @throws IOException if a file cannot be read or written
+   */
   public static void copyTree(Path source, Path target) throws IOException {
     try (Stream<Path> paths = Files.walk(source)) {
       for (Path path : (Iterable<Path>) paths::iterator) {
@@ -63,10 +81,20 @@ public final class VsumBackup {
     }
   }
 
+  /**
+   * Returns where the backup was written.
+   *
+   * @return the backup folder
+   */
   public Path location() {
     return backupFolder;
   }
 
+  /**
+   * Empties the folder the backup was taken from and copies the backup back into it.
+   *
+   * @throws IOException if the folder cannot be cleared or the backup cannot be copied
+   */
   public void restore() throws IOException {
     clearFolder(sourceFolder);
     copyTree(backupFolder, sourceFolder);

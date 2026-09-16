@@ -15,6 +15,11 @@ import org.eclipse.xtext.util.IFileSystemScanner
  * the workspace scan uses the server-level injector, not the per-language one.
  */
 class ReactionsServerLauncher {
+	/**
+	 * Starts the language server with the file system scanner that skips build output.
+	 *
+	 * @param args the arguments the Xtext server launcher understands
+	 */
 	def static void main(String[] args) {
 		val overridden = Modules.override(new ServerModule()).with(new AbstractModule() {
 			override configure() {

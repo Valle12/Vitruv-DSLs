@@ -40,6 +40,12 @@ class ConsistencyRuleHashCalculator {
 		this.jvmModelAssociations = jvmModelAssociations
 	}
 
+	/**
+	 * Computes the semantic hash of the given reaction.
+	 *
+	 * @param reaction the reaction to hash
+	 * @return the hash over the reaction and every routine it reaches, as a hexadecimal string
+	 */
 	def String computeRuleHash(Reaction reaction) {
 		val hashInput = new StringBuilder()
 		hashInput.append(REACTION_SECTION_PREFIX).append(reaction.qualifiedName).append("\n")

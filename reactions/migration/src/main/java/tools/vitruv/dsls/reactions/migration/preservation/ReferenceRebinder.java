@@ -13,6 +13,11 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.util.EcoreUtil.Copier;
 
+/**
+ * Points the references of restored content at the migrated elements. A reference whose target
+ * neither survived the migration nor is being restored cannot be rebound, and the content it
+ * belongs to is then left out rather than inserted half broken.
+ */
 final class ReferenceRebinder {
   private final UnaryOperator<EObject> toMigratedElement;
   private final Path oldFolder;

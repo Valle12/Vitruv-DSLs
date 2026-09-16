@@ -8,9 +8,17 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 
+/** Takes the references that lead from one resource into another out of a set of models. */
 public final class CrossResourceReferences {
   private CrossResourceReferences() {}
 
+  /**
+   * Removes every reference whose target lies in another of the given resources and remembers
+   * it. Containment, container, derived and unchangeable features are left as they are.
+   *
+   * @param rootsByUri the roots of each resource
+   * @return the removed references, which can be put back once the roots are in place
+   */
   public static DetachedReferences detach(Map<URI, List<EObject>> rootsByUri) {
     Map<EObject, URI> ownerUri = ownerUris(rootsByUri);
     List<Reference> detached = new ArrayList<>();

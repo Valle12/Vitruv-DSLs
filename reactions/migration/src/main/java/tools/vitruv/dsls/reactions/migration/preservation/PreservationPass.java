@@ -8,10 +8,21 @@ import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
 import tools.vitruv.framework.views.CommittableView;
 import tools.vitruv.framework.views.View;
 
+/**
+ * Carries the content that no consistency rule produced from the state before a migration into
+ * the migrated models. The step pairs the old models with the migrated ones, collects what has
+ * no counterpart there, and either reports it or puts it back, depending on the policy.
+ */
 @Slf4j
 public final class PreservationPass {
   private PreservationPass() {}
 
+  /**
+   * Runs the preservation step for the given migration.
+   *
+   * @param context the migrated V-SUM, the state it had before, and how far to go
+   * @return what was carried over, what was lost and what was decided
+   */
   public static PreservationOutcome run(PreservationContext context) {
     PreservationPolicy policy = context.policy();
     if (!policy.analyses()) {

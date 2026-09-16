@@ -7,6 +7,11 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 
+/**
+ * Chooses the dominant model whose trial migration proposes the fewest changes. Only metamodels
+ * that reach every other present one are tried, since only those can derive the rest, and a
+ * candidate whose trial does not complete is passed over.
+ */
 @Slf4j
 public final class FewestChangesDominance implements DominanceStrategy {
   private static Set<MetamodelNode> candidatesReachingAllPresent(DominanceContext context) {

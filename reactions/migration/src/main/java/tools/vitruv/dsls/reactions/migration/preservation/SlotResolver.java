@@ -8,6 +8,11 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
 import org.eclipse.emf.ecore.EStructuralFeature;
 
+/**
+ * Looks for a feature of a migrated element that can hold a value of the old state. A feature
+ * of the same name is preferred, and where several others would do, the choice is left open
+ * rather than made arbitrarily.
+ */
 public final class SlotResolver {
   private static final Map<Class<?>, Class<?>> WRAPPERS =
       Map.of(
@@ -22,6 +27,14 @@ public final class SlotResolver {
 
   private SlotResolver() {}
 
+  /**
+   * Looks for the feature of the new owner that can hold the given value.
+   *
+   * @param newOwner the migrated element the value is to be put on
+   * @param oldFeature the feature the value sat in before the migration
+   * @param value the value to place
+   * @return the feature found, or why none was found and which ones would have done
+   */
   public static SlotResolution findSlot(
       EObject newOwner, EStructuralFeature oldFeature, Object value) {
     EStructuralFeature sameName = newOwner.eClass().getEStructuralFeature(oldFeature.getName());
@@ -53,6 +66,12 @@ public final class SlotResolver {
     return SlotResolution.of(newOwner, compatible.getFirst());
   }
 
+  /**
+   * Returns whether the given slot can take one more value.
+   *
+   * @param slot the feature of a migrated element
+   * @return the same slot when it has room, and otherwise why it has none
+   */
   public static SlotResolution checkCapacity(TargetSlot slot) {
     EObject newOwner = slot.owner();
     EStructuralFeature feature = slot.feature();
@@ -79,6 +98,14 @@ public final class SlotResolver {
     return SlotResolution.of(newOwner, feature);
   }
 
+  /**
+   * Returns whether the given slot already holds the given value, so that carrying it over
+   * would change nothing.
+   *
+   * @param slot the feature of a migrated element
+   * @param value the value to look for
+   * @return whether the slot already holds it
+   */
   public static boolean holds(TargetSlot slot, Object value) {
     EStructuralFeature feature = slot.feature();
     if (feature.isMany()) {

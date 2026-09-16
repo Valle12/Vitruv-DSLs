@@ -35,12 +35,28 @@ import tools.vitruv.dsls.reactions.migration.strategy.MaxReachabilityDominance;
 import tools.vitruv.dsls.reactions.migration.vsum.VsumBackup;
 import tools.vitruv.dsls.reactions.migration.vsum.Vsums;
 
+/**
+ * Command line entry point of the migration, which carries a persisted V-SUM over to a new
+ * rule set in place.
+ */
 @Slf4j
 public class Main {
+  /**
+   * Runs the migration and ends the process with its exit code.
+   *
+   * @param args the command line arguments, as {@link CommandLine#USAGE} describes them
+   */
   public static void main(String[] args) {
     System.exit(run(args));
   }
 
+  /**
+   * Runs the migration, putting a question a reaction asks to the console when there is one and
+   * answering it with a harmless default otherwise.
+   *
+   * @param args the command line arguments
+   * @return 0 when the migration went through, 1 when it did not
+   */
   public static int run(String[] args) {
     return run(
         args,
@@ -53,6 +69,14 @@ public class Main {
     log.info("\n{}", CommandLine.USAGE);
   }
 
+  /**
+   * Runs the migration and lets the given provider answer a question a reaction asks.
+   *
+   * @param args the command line arguments
+   * @param interactionFallback what answers such a question
+   * @return 0 when the migration went through, 1 when the command line was wrong, the rule set
+   *     could not be loaded or the migration failed
+   */
   public static int run(String[] args, InteractionResultProvider interactionFallback) {
     CommandLine commandLine = new CommandLine(args);
     if (commandLine.isHelpRequested()) {

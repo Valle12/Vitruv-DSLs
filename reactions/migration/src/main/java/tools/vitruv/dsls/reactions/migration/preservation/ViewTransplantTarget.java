@@ -7,6 +7,10 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import tools.vitruv.framework.views.CommittableView;
 
+/**
+ * The target of a run that changes the V-SUM. It works through a view, so that what the
+ * preservation step inserts is recorded as a change like any other.
+ */
 @RequiredArgsConstructor
 final class ViewTransplantTarget implements TransplantTarget {
   private final CommittableView committable;

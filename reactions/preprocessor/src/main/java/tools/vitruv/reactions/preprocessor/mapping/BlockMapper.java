@@ -11,6 +11,10 @@ import tools.vitruv.reactions.preprocessor.model.CodeBlocks;
 import tools.vitruv.reactions.preprocessor.model.Header;
 import tools.vitruv.reactions.preprocessor.model.ReactionsFile;
 
+/**
+ * Splits the text of an annotated reactions file into its header and the reaction and routine
+ * blocks that follow it, matching curly braces to find where a block ends.
+ */
 public class BlockMapper {
   private static final char OPEN_CURLY = '{';
   private static final char CLOSE_CURLY = '}';
@@ -27,6 +31,12 @@ public class BlockMapper {
       Pattern.compile("routine(?:\\s*\\w+)?\\s*\\(");
   private static final Pattern REACTIONS_NAME_PATTERN = Pattern.compile("reactions: (\\w*)");
 
+  /**
+   * Splits the given reactions file into its header and its code blocks.
+   *
+   * @param content the text of an annotated reactions file
+   * @return the header and the reactions and routines found after it
+   */
   public ReactionsFile extractBlocks(String content) {
     Header header = extractHeader(content);
     CodeBlocks codeBlocks = extractCodeBlocks(content.substring(header.header().length()));

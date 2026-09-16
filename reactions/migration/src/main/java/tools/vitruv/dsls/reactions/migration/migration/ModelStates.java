@@ -14,6 +14,10 @@ import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.graph.MetamodelNode;
 import tools.vitruv.dsls.reactions.migration.preservation.ModelFiles;
 
+/**
+ * Loads the model files of a folder, narrows them down to the metamodels of interest and
+ * counts how far two such states differ.
+ */
 final class ModelStates {
   private ModelStates() {}
 

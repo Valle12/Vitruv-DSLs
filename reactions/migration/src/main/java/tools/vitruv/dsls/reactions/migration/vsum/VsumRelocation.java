@@ -9,9 +9,18 @@ import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 
+/** Copies a V-SUM folder elsewhere, rewriting the absolute paths its files carry. */
 public final class VsumRelocation {
   private VsumRelocation() {}
 
+  /**
+   * Copies the V-SUM and replaces every mention of the old folder, both as a file URI and as a
+   * plain path, with the new one, so that the copy refers to itself instead of to the original.
+   *
+   * @param from the folder to copy
+   * @param to the folder to copy into
+   * @throws UncheckedIOException if a file cannot be read, written or copied
+   */
   public static void copy(Path from, Path to) {
     String oldRoot = rootUri(from);
     String newRoot = rootUri(to);

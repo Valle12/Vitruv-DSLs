@@ -18,6 +18,12 @@ import tools.vitruv.reactions.preprocessor.model.ReactionsUtils;
 import tools.vitruv.reactions.preprocessor.reader.ConfigReader;
 import tools.vitruv.reactions.preprocessor.reader.ReactionsReader;
 
+/**
+ * Derives the rule set of one configuration, by copying the reactions whose {@code @feature}
+ * annotation names a selected feature into a fresh output directory, together with every routine
+ * those reactions reach. The configuration file and the directory of annotated reactions are
+ * passed to the constructor.
+ */
 @Slf4j
 @RequiredArgsConstructor
 public class FeatureExtractor {
@@ -31,6 +37,13 @@ public class FeatureExtractor {
   private final String reactionsDir;
   private final Map<String, ReactionsUtils> reactionsUtils = new HashMap<>();
 
+  /**
+   * Writes the derived rule set next to the configuration file, into a directory named after the
+   * configuration with a {@code -reactions} suffix. An output directory left over from an earlier
+   * run is deleted first. A routine is carried over whenever a kept reaction calls it, including
+   * calls that cross into another reactions segment through a qualified name or an unqualified
+   * import.
+   */
   public void extractFeatures() {
     JsonMapper jsonMapper = new JsonMapper();
 

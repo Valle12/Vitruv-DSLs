@@ -3,6 +3,7 @@ package tools.vitruv.dsls.reactions.migration.migration;
 import java.util.*;
 import org.eclipse.emf.ecore.EObject;
 
+/** Groups model roots by the metamodel they belong to. */
 final class ModelGroups {
   private ModelGroups() {}
 

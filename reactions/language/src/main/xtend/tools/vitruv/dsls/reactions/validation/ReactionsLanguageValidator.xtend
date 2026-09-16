@@ -40,6 +40,13 @@ class ReactionsLanguageValidator extends AbstractReactionsLanguageValidator {
 	@Inject ReactionsImportScopeHelper reactionsImportScopeHelper;
 
 	@Check(CheckType.EXPENSIVE)
+	/**
+	 * Reports every {@code @feature} annotation left in a reactions file. The compiler is meant
+	 * to run on the derived rule set, so an annotation still in the source means the
+	 * preprocessor was skipped.
+	 *
+	 * @param reactionsFile the file being validated
+	 */
 	def checkNoFeatureAnnotations(ReactionsFile reactionsFile) {
 		val node = NodeModelUtils.getNode(reactionsFile);
 		if (node === null) {
@@ -65,6 +72,12 @@ class ReactionsLanguageValidator extends AbstractReactionsLanguageValidator {
 	}
 
 	@Check
+	/**
+	 * Reports an {@code @feature} annotation whose key is not {@code type}, which is the only key
+	 * the annotation takes.
+	 *
+	 * @param reactionsFile the file being validated
+	 */
 	def checkFeatureAnnotationKey(ReactionsFile reactionsFile) {
 		val node = NodeModelUtils.getNode(reactionsFile);
 		if (node === null) {

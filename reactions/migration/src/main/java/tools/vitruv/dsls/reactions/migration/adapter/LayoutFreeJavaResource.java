@@ -7,6 +7,11 @@ import org.eclipse.emf.common.util.URI;
 import org.emftext.language.java.resource.JavaSourceOrClassFileResource;
 import org.emftext.language.java.resource.java.IJavaOptions;
 
+/**
+ * A JaMoPP resource that records no layout information, so that a file written back from it
+ * carries the formatting of the printer rather than of the text it was parsed from. Deleting a
+ * resource that has no file behind it is reduced to unloading it.
+ */
 final class LayoutFreeJavaResource extends JavaSourceOrClassFileResource {
   LayoutFreeJavaResource(URI uri) {
     super(uri);

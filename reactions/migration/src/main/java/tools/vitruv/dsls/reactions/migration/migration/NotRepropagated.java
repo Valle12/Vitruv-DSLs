@@ -21,6 +21,7 @@ import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 import tools.vitruv.dsls.reactions.migration.migration.SelectiveOutcome.LeftOutElement;
 import tools.vitruv.framework.vsum.internal.InternalVirtualModel;
 
+/** The elements a dirty rule matched that were left alone, each with the reason. */
 @Slf4j
 final class NotRepropagated {
   private static final int SAMPLE_SIZE = 10;

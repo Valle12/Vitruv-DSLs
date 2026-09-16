@@ -11,12 +11,25 @@ import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import tools.vitruv.dsls.reactions.migration.adapter.AdapterRegistry;
 
+/**
+ * Finds the model files of a V-SUM folder, leaving out the metadata the framework keeps for
+ * itself, the preservation report and the platform libraries a metamodel resolves against.
+ */
 public final class ModelFiles {
   private static final Set<String> METADATA_EXTENSIONS =
       Set.of("uuid", "models", "correspondence", "marker_vitruv");
 
   private ModelFiles() {}
 
+  /**
+   * Returns the model files below the given folder, sorted by their relative path so that two
+   * states of the same V-SUM are walked in the same order.
+   *
+   * @param folder the folder of the V-SUM
+   * @param adapters the metamodel adapters, which decide what counts as a platform library
+   * @return the model files
+   * @throws UncheckedIOException if the folder cannot be walked
+   */
   public static List<Path> in(Path folder, AdapterRegistry adapters) {
     Path vsumMetadataFolder = folder.resolve("vsum");
     Path consistencyMetadataFolder = folder.resolve("consistencymetadata");

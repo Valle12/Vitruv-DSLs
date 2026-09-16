@@ -7,6 +7,11 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * A temporary folder tree for work that must not touch the V-SUM being migrated, such as a
+ * trial migration. The tree is created on first use and deleted as a whole when the area is
+ * closed.
+ */
 @Slf4j
 public final class ScratchArea implements AutoCloseable {
   private Path root;
@@ -20,6 +25,12 @@ public final class ScratchArea implements AutoCloseable {
     }
   }
 
+  /**
+   * Creates a new empty folder inside the scratch area.
+   *
+   * @param prefix a name prefix, which a counter is appended to
+   * @return the created folder
+   */
   public Path newFolder(String prefix) {
     try {
       Path folder = rootFolder().resolve(prefix + "-" + folderCounter++);

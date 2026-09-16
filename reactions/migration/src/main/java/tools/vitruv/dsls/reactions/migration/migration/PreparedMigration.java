@@ -7,6 +7,7 @@ import org.eclipse.emf.common.util.URI;
 import tools.vitruv.dsls.reactions.migration.graph.DominancePlan;
 import tools.vitruv.dsls.reactions.migration.vsum.ModelSnapshot;
 
+/** Everything a full migration works out before it begins to change the V-SUM. */
 record PreparedMigration(
     DominancePlan plan,
     SourceSelection selection,

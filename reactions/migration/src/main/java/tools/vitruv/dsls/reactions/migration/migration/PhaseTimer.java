@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.function.Supplier;
 import tools.vitruv.dsls.reactions.migration.migration.MigrationStatistics.PhaseDuration;
 
+/** Measures how long each phase of a migration takes, and the run as a whole. */
 class PhaseTimer {
   private static final String VIEW_CLOSE = "view-close";
 

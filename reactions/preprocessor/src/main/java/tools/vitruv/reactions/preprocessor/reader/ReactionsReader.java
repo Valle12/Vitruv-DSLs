@@ -9,14 +9,26 @@ import java.util.Optional;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 
+/** Reads the annotated reactions of a directory and of its immediate subdirectories. */
 @Slf4j
 public class ReactionsReader {
   private final Path dir;
 
+  /**
+   * Creates a reader for the given directory.
+   *
+   * @param dir the path of the directory holding the annotated reactions
+   */
   public ReactionsReader(String dir) {
     this.dir = Path.of(dir);
   }
 
+  /**
+   * Reads every reactions file of the directory and of the directories directly below it.
+   *
+   * @return the text of each file, keyed by its file name and, for a file in a subdirectory, by
+   *     that subdirectory and the file name, empty when the directory cannot be read
+   */
   public Map<String, String> readReactionsDir() {
     Map<String, String> reactions = new HashMap<>();
 

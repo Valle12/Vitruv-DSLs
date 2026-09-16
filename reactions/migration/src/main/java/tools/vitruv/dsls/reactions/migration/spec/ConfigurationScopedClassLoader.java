@@ -6,6 +6,11 @@ import java.util.Collection;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * A class loader that reads the classes of the rule configuration from its own jar first and
+ * delegates everything else to its parent. Without it, a class of one configuration that is
+ * already on the class path would answer for the equally named class of another.
+ */
 @Slf4j
 final class ConfigurationScopedClassLoader extends URLClassLoader {
   static {

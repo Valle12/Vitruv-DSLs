@@ -10,6 +10,11 @@ import tools.vitruv.dsls.reactions.ide.AbstractReactionsLanguageIdeModule
  * Use this class to register ide components.
  */
 class ReactionsLanguageIdeModule extends AbstractReactionsLanguageIdeModule {
+	/**
+	 * Binds the resource validator the editor uses.
+	 *
+	 * @return the validator that keeps the editor from validating the whole index
+	 */
 	def Class<? extends IResourceValidator> bindIResourceValidator() {
 		EditorResourceValidator
 	}

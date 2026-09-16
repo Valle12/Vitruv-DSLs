@@ -8,6 +8,10 @@ import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.util.Diagnostician;
 
+/**
+ * Counts the validation errors of an element before and after a value is put back, so that a
+ * value which makes the model invalid can be taken out again.
+ */
 final class MetamodelValidation {
   private final Map<EObject, Integer> baselines = new IdentityHashMap<>();
 

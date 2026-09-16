@@ -7,6 +7,11 @@ import tools.vitruv.change.interaction.UserInteractionOptions.InputValidator;
 import tools.vitruv.change.interaction.UserInteractionOptions.NotificationType;
 import tools.vitruv.change.interaction.UserInteractionOptions.WindowModality;
 
+/**
+ * Answers every interaction with a harmless default, for a run that has nobody to ask. A
+ * confirmation is declined, a text input is left empty, a single selection takes the first
+ * choice and a multiple selection takes none, and each answer is logged.
+ */
 @Slf4j
 public class NonInteractiveDefaults implements InteractionResultProvider {
   @Override

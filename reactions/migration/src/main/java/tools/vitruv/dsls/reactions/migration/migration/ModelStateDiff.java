@@ -31,6 +31,11 @@ import org.eclipse.emf.ecore.util.EcoreUtil;
 import tools.vitruv.change.atomic.EChange;
 import tools.vitruv.change.composite.recording.ChangeRecorder;
 
+/**
+ * Compares two states of the same models and expresses the difference as the changes that turn
+ * the one into the other. Elements are matched structurally rather than by identifier, so the
+ * two states need not come from the same V-SUM.
+ */
 @Slf4j
 public final class ModelStateDiff {
   private static final UseIdentifiers MATCHING = UseIdentifiers.NEVER;
@@ -81,6 +86,15 @@ public final class ModelStateDiff {
         String.join(", ", proxies));
   }
 
+  /**
+   * Counts the changes that would turn the current state into the proposed one. Resources are
+   * paired by file name, and one that only a single side holds counts as created or deleted.
+   *
+   * @param current the state to start from
+   * @param proposed the state to reach
+   * @return the number of changes over all resources
+   * @throws IllegalStateException if a pair of resources cannot be compared
+   */
   public long changeCount(Collection<Resource> current, Collection<Resource> proposed) {
     Map<String, Resource> currentByName = byFileName(current);
     Map<String, Resource> proposedByName = byFileName(proposed);
@@ -96,6 +110,14 @@ public final class ModelStateDiff {
     return total;
   }
 
+  /**
+   * Returns the changes that turn the old state of a resource into the new one.
+   *
+   * @param newState the state to reach
+   * @param oldState the state to start from
+   * @return the changes recorded while merging the one into the other
+   * @throws IllegalArgumentException if a state is missing or still holds unresolved proxies
+   */
   public List<EChange<EObject>> changesBetween(Resource newState, Resource oldState) {
     checkArgument(oldState != null && newState != null, "old state or new state must not be null");
     checkNoProxies(newState, "new state");
@@ -111,6 +133,13 @@ public final class ModelStateDiff {
         });
   }
 
+  /**
+   * Returns the changes that create a resource which did not exist before.
+   *
+   * @param newState the resource to create
+   * @return the changes recorded while inserting its content
+   * @throws IllegalArgumentException if the state is missing or still holds unresolved proxies
+   */
   public List<EChange<EObject>> changesForCreated(Resource newState) {
     checkArgument(newState != null, "new state must not be null");
     checkNoProxies(newState, "new state");
@@ -121,6 +150,13 @@ public final class ModelStateDiff {
         created, () -> created.getContents().addAll(EcoreUtil.copyAll(newState.getContents())));
   }
 
+  /**
+   * Returns the changes that delete a resource which the other state no longer holds.
+   *
+   * @param oldState the resource to delete
+   * @return the changes recorded while clearing its content
+   * @throws IllegalArgumentException if the state is missing or still holds unresolved proxies
+   */
   public List<EChange<EObject>> changesForDeleted(Resource oldState) {
     checkArgument(oldState != null, "old state must not be null");
     checkNoProxies(oldState, "old state");
